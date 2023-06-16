@@ -24,7 +24,7 @@ const addTicket = async (req, res, next) => {
       const { user, description, category, notify } = req.body;
       let owner = await User.findById(user).populate('tickets');
       const message = {
-        name: owner.nick,
+        name: 'Aregodas',
         msg: description,
         time: new Date()
       }
