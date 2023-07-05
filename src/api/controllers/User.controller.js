@@ -109,6 +109,18 @@ const getCurrentUser = async (req, res) => {
   }
 };
 
+const editUser = async (req, res) => {
+  try {
+    const { newUser, _id } = req.body;
+    const user = await User.findById(_id);
+    let userDb = await User.findByIdAndUpdate(_id, newUser);
+    userDb = await User.findByIdAndUpdate(_id, { password: user.password })
+    res.status(200).json(userDb);
+  } catch (error) {
+    res.status(500).json(error);
+  }
+};
+
 const verifyUser = async (req, res) => {
   try {
     const { token, nick } = req.body;
@@ -265,4 +277,4 @@ const logout = async (req, res) => {
   res.json({ message: 'Se ha cerrado sesión' });
 }
 
-module.exports = { register, login, getCurrentUser, verifyUser, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }
+module.exports = { register, login, getCurrentUser, editUser, verifyUser, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }

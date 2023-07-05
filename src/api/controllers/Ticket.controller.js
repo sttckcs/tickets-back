@@ -36,7 +36,6 @@ const addTicket = async (req, res, next) => {
         }
       )
       if (sameTicket[0]) {
-        console.log({ code: 403, message: "Ya existe un ticket abierto de la misma categoría" })
         res.status(403).send({ code: 403, message: "Ya existe un ticket abierto de la misma categoría" });
         return next();
       }
