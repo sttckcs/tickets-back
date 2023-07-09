@@ -5,12 +5,12 @@ const nodemailer = require('nodemailer');
 const { validationEmail, validationPassword } = require('../../validators/validation')
 
 let transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
+  host: "",
   port: 587,
   secure: false, // true for 465, false for other ports
   auth: {
-    user: 'krst221@gmail.com', // generated ethereal user
-    pass: 'rzkkfyibqyfiitwo', // generated ethereal password
+    user: '', // generated ethereal user
+    pass: '', // generated ethereal password
   },
 });
 
@@ -192,7 +192,7 @@ const sendEmail = async (req, res) => {
   try {
     const { emails, subject, message } = req.body;
     const mailOptions = {
-      from: 'Staxx <krst221@gmail.com>',
+      from: 'Staxx <>',
       bcc: emails,
       subject: subject,
       text: message,
@@ -223,7 +223,7 @@ const sendRecoveryEmail = async (req, res) => {
     const token = user.password.replace(/[/.]/g,'')
 
     const mailOptions = { 
-      from: 'Staxx <krst221@gmail.com>',
+      from: 'Staxx <>',
       bcc: email,
       subject: 'Recupera tu cuenta',
       text: `${nick}`,
@@ -249,7 +249,7 @@ const sendRecoveryEmail = async (req, res) => {
 const sendVerifyEmail = async (email, nick, token) => {
   try {
     const mailOptions = {
-      from: 'Staxx <krst221@gmail.com>',
+      from: 'Staxx <>',
       bcc: email,
       subject: 'Verifica tu cuenta',
       text: `${nick}`,

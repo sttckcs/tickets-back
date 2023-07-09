@@ -144,17 +144,17 @@ const sendMessageEmail = async (byAdmin, message, ticketid, owneremail) => {
 
   try {
     let transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
+      host: "",
       port: 587,
       secure: false, // true for 465, false for other ports
       auth: {
-        user: 'krst221@gmail.com', // generated ethereal user
-        pass: 'rzkkfyibqyfiitwo', // generated ethereal password
+        user: '', // generated ethereal user
+        pass: '', // generated ethereal password
       },
     });
 
     const mailOptions = {
-      from: 'Staxx <krst221@gmail.com>',
+      from: 'Staxx <>',
       bcc: emails,
       subject: `Nuevo mensaje en el ticket ${ticketid.substring(0,8)} de ${message.name}`,
       text: message.msg,
