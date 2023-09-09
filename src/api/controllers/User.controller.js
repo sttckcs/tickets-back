@@ -14,7 +14,7 @@ let transporter = nodemailer.createTransport({
   },
 });
 
-const register = async (req, res, next) => {
+const register = async (req, res) => {
   try {
     const { nick, name, steam, phone, email, password } = req.body;
 
@@ -22,22 +22,23 @@ const register = async (req, res, next) => {
     if (await User.findOne({ nick: nick })) {
       console.log({ code: 403, message: "El nick ya existe" })
       res.status(403).send({ code: 403, message: "Ese nick ya existe" });
-      return next();
+      return;
     }
     if (await User.findOne({ email: email })) {
       console.log({ code: 403, message: "El correo ya existe" })
       res.status(403).send({ code: 403, message: "El correo ya existe" });
-      return next();
+      return;
     }
     if (!validationEmail(email)) {
       console.log({ code: 403, message: "El correo no es válido" })
       res.status(403).send({ code: 403, message: "El correo no es válido" });
-      return next();
+      return;
     }
-    if (!validationPassword(password)) {
-        console.log({ code: 403, message: "La contraseña no es válida" })
-        res.status(403).send({ code: 403, message: "La contraseña no es válida" });
-        return next();
+    const passVal = validationPassword(password);
+    if (passVal !== 'Valid') {
+        console.log({ code: 403, message: passVal })
+        res.status(403).send({ code: 403, message: passVal });
+        return;
     }
 
     // Hash the password
@@ -58,7 +59,7 @@ const register = async (req, res, next) => {
     const createUser = await newUser.save();
     createUser.password = null;
     const token = hashedPassword.replace(/[/.]/g,'')
-    sendVerifyEmail(email, nick, token);
+    // sendVerifyEmail(email, nick, token);
     return res.status(201).json(createUser);
   } catch (error) {
     return res.status(500).json(error);
@@ -155,9 +156,10 @@ const changePassword = async (req, res, next) => {
   try {
     const { nick, password } = req.body;
     let user = await User.findOne({ nick: nick })
-    if (!validationPassword(password)) {
-      console.log({ code: 403, message: "La contraseña no es válida" })
-      res.status(403).send({ code: 403, message: "La contraseña no es válida" });
+    const passVal = validationPassword(password);
+    if (passVal !== 'Valid') {
+      console.log({ code: 403, message: passVal })
+      res.status(403).send({ code: 403, message: passVal });
       return next();
   }
     const salt = await bcrypt.genSalt(10);
