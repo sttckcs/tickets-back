@@ -144,17 +144,18 @@ const sendMessageEmail = async (byAdmin, message, ticketid, owneremail) => {
 
   try {
     let transporter = nodemailer.createTransport({
-      host: "",
-      port: 587,
-      secure: false, // true for 465, false for other ports
+      pool: true,
+      host: "mail.todoskins.com",
+      port: 465,
+      secure: true, // true for 465, false for other ports
       auth: {
-        user: '', // generated ethereal user
-        pass: '', // generated ethereal password
+        user: 'skinsdream@todoskins.com', // generated ethereal user
+        pass: 'Rata1234567890', // generated ethereal password
       },
     });
 
     const mailOptions = {
-      from: 'Staxx <>',
+      from: 'skinsdream@todoskins.com',
       bcc: emails,
       subject: `Nuevo mensaje en el ticket ${ticketid.substring(0,8)} de ${message.name}`,
       text: message.msg,

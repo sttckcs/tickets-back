@@ -5,12 +5,13 @@ const nodemailer = require('nodemailer');
 const { validationEmail, validationPassword } = require('../../validators/validation')
 
 let transporter = nodemailer.createTransport({
-  host: "",
-  port: 587,
-  secure: false, // true for 465, false for other ports
+  pool: true,
+  host: "mail.todoskins.com",
+  port: 465,
+  secure: true, // true for 465, false for other ports
   auth: {
-    user: '', // generated ethereal user
-    pass: '', // generated ethereal password
+    user: 'skinsdream@todoskins.com', // generated ethereal user
+    pass: 'Rata1234567890', // generated ethereal password
   },
 });
 
@@ -59,7 +60,7 @@ const register = async (req, res) => {
     const createUser = await newUser.save();
     createUser.password = null;
     const token = hashedPassword.replace(/[/.]/g,'')
-    // sendVerifyEmail(email, nick, token);
+    sendVerifyEmail(email, nick, token);
     return res.status(201).json(createUser);
   } catch (error) {
     return res.status(500).json(error);
@@ -194,7 +195,7 @@ const sendEmail = async (req, res) => {
   try {
     const { emails, subject, message } = req.body;
     const mailOptions = {
-      from: 'Staxx <>',
+      from: 'Todoskins',
       bcc: emails,
       subject: subject,
       text: message,
@@ -225,11 +226,11 @@ const sendRecoveryEmail = async (req, res) => {
     const token = user.password.replace(/[/.]/g,'')
 
     const mailOptions = { 
-      from: 'Staxx <>',
-      bcc: email,
+      from: 'Todoskins <skinsdream@todoskins.com>',
+      to: email,
       subject: 'Recupera tu cuenta',
       text: `${nick}`,
-      html: `<div><h2>Hola! Recupera tu cuenta haciendo click aquí:</h2><a href='http://localhost:5173/recover/${nick}/${token}'>Recupera tu cuenta aquí</a></div>`,
+      html: `<div><h2>Hola! Recupera tu cuenta haciendo click aquí:</h2><a href='https://todoskins.com/recover/${nick}/${token}'>Recupera tu cuenta aquí</a></div>`,
     }
     
     transporter.sendMail(mailOptions, (error, info) => {
@@ -248,21 +249,24 @@ const sendRecoveryEmail = async (req, res) => {
   }
 };
 
-const sendVerifyEmail = async (email, nick, token) => {
+const sendVerifyEmail = async (email, nick, token, res) => {
+  console.log('send email');
   try {
     const mailOptions = {
-      from: 'Staxx <>',
-      bcc: email,
+      from: 'Todoskins <skinsdream@todoskins.com>',
+      to: email,
       subject: 'Verifica tu cuenta',
       text: `${nick}`,
-      html: `<div><h2>Hola! Verifica tu cuenta haciendo click aquí:</h2><a href='http://localhost:5173/verify/${nick}/${token}'>Verifica tu cuenta aquí</a></div>`,
+      html: `<div><h2>Hola! Verifica tu cuenta haciendo click aquí:</h2><a href='http://todoskins.com/verify/${nick}/${token}'>Verifica tu cuenta aquí</a></div>`,
     }
     
     transporter.sendMail(mailOptions, (error, info) => {
       if (error){
+        console.log('send email error');
         console.log(error);
         res.status(500).send('Error enviando los correos. Comprueba los logs');
       } else {
+        console.log('send email ok');
         console.log('Message sent: ' + info.response);
         res.status(200);
      };
