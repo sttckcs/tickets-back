@@ -72,7 +72,7 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     // Check if the user exists
-    const user = await User.findOne({ email }).populate('tickets').populate('chats');
+    const user = await User.findOne({ email }).populate('tickets').populate('chats').populate('facturas');
     if (!user) {
       return res.status(401).json({ message: 'Correo o contraseña incorrectas' });
     }
@@ -104,7 +104,7 @@ const login = async (req, res) => {
 const getCurrentUser = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const user = await User.findById(userId).select('-password').populate('tickets').populate('chats');
+    const user = await User.findById(userId).select('-password').populate('tickets').populate('chats').populate('facturas');
     res.status(200).json(user);
   } catch (error) {
     res.status(500).json(error);
@@ -175,7 +175,7 @@ const changePassword = async (req, res, next) => {
 const getUserById = async (req, res) => {
   try {
     const {id} = req.body
-    const user = await User.findById(id).select('-password').populate('tickets').populate('chats');
+    const user = await User.findById(id).select('-password').populate('tickets').populate('chats').populate('facturas');
     res.status(200).json(user);
   } catch (error) {
     res.status(500).json(error);

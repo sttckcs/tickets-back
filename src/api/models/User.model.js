@@ -4,6 +4,15 @@ const Schema = mongoose.Schema;
 
 const UserSchema = new Schema({
   nick: { type: String, required: true, unique: true },
+  idNeverlate: { type: String, required: true, unique: true },
+  razonSocial: { type: String, required: true, unique: true },
+  nif: { type: String, required: true, unique: true },
+  empresa: { type: Boolean, required: true, default: false },
+  direccionFacturacion: { type: String, required: true, unique: true },
+  poblacionFacturacion: { type: String, required: true, unique: true },
+  codigoPostalFacturacion: { type: String, required: true, unique: true },
+  provinciaFacturacion: { type: String, required: true, unique: true },
+  paisFacturacion: { type: String, required: true, unique: true },
   name: { type: String, required: true },
   steam: { type: String, required: true },
   verified: { type: Boolean, required: true, default: false },
@@ -15,6 +24,7 @@ const UserSchema = new Schema({
   password: { type: String, required: true },
   chats: [{type: Schema.Types.ObjectId, ref: "Ticket"}],
   tickets: [{type: Schema.Types.ObjectId, ref: "Ticket"}],
+  facturas: [{type: Schema.Types.ObjectId, ref: "Bill"}],
 },{
   timestamps: true
 });
