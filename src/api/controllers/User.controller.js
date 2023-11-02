@@ -2,6 +2,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User.model');
 const nodemailer = require('nodemailer');
+const axios = require('axios');
 const { validationEmail, validationPassword } = require('../../validators/validation')
 
 let transporter = nodemailer.createTransport({
@@ -72,7 +73,7 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     // Check if the user exists
-    const user = await User.findOne({ email }).populate('tickets').populate('chats').populate('facturas');
+    const user = await User.findOne({ email }).populate('tickets').populate('chats');
     if (!user) {
       return res.status(401).json({ message: 'Correo o contraseña incorrectas' });
     }
@@ -104,7 +105,7 @@ const login = async (req, res) => {
 const getCurrentUser = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const user = await User.findById(userId).select('-password').populate('tickets').populate('chats').populate('facturas');
+    const user = await User.findById(userId).select('-password').populate('tickets').populate('chats');
     res.status(200).json(user);
   } catch (error) {
     res.status(500).json(error);
@@ -120,6 +121,47 @@ const editUser = async (req, res) => {
     userDb.password = null;
     res.status(200).json(userDb);
   } catch (error) {
+    res.status(500).json(error);
+  }
+};
+
+const editUserBilling = async (req, res) => {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    const { newUser, _id } = req.body;
+    const user = await User.findById(_id);
+
+    if (user.idNeverlate === 0) newUser.idNeverlate = parseInt(newUser.nif.slice(0, -1));
+    const url = "https://center.neverlate.es/ws/usuarios/wsRest.php?funcion=addBasic";
+
+    const data = {
+      clientId: 'MzUzPUFCQ0RFRkdISUpLTE1OT1BRUlNU',
+      token: 'opp5kTYKUqGyzzpBAUDB',
+      email: newUser.email,
+      nombre: newUser.name,
+      apellidos: newUser.apellidos,
+      dni: newUser.nif,
+      direccion: newUser.direccionFacturacion,
+      codigoPostal: newUser.codigoPostalFacturacion,
+      poblacion: newUser.poblacionFacturacion,
+      provincia: newUser.provinciaFacturacion,
+      pais: newUser.paisFacturacion,
+    };
+
+    try {
+      const res = await axios.post(url, data, { headers });
+      console.log('Response:', res.data);
+    } catch (error) {
+      console.error('Error:', error);
+      res.status(error.errorCode).json(error);
+    }
+
+    let userDb = await User.findByIdAndUpdate(_id, newUser);
+    userDb = await User.findByIdAndUpdate(_id, { password: user.password })
+    userDb.password = null;
+    res.status(200).json(userDb);
+  } catch (error) {
+    console.log('error', error);
     res.status(500).json(error);
   }
 };
@@ -175,7 +217,7 @@ const changePassword = async (req, res, next) => {
 const getUserById = async (req, res) => {
   try {
     const {id} = req.body
-    const user = await User.findById(id).select('-password').populate('tickets').populate('chats').populate('facturas');
+    const user = await User.findById(id).select('-password').populate('tickets').populate('chats');
     res.status(200).json(user);
   } catch (error) {
     res.status(500).json(error);
@@ -284,4 +326,4 @@ const logout = async (req, res) => {
   res.json({ message: 'Se ha cerrado sesión' });
 }
 
-module.exports = { register, login, getCurrentUser, editUser, verifyUser, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }
+module.exports = { register, login, getCurrentUser, editUser, editUserBilling, verifyUser, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }
