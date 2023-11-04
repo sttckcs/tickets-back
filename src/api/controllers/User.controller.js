@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User.model');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
+const FormData = require('form-data');
 const { validationEmail, validationPassword } = require('../../validators/validation')
 
 let transporter = nodemailer.createTransport({
@@ -127,30 +128,28 @@ const editUser = async (req, res) => {
 
 const editUserBilling = async (req, res) => {
   try {
-    const headers = { 'Content-Type': 'application/json' };
     const { newUser, _id } = req.body;
     const user = await User.findById(_id);
+    const url = `https://center.neverlate.es/ws/usuarios/wsRest.php?funcion=${user.idNeverlate === 0 ? 'addBasic' : 'updateUser'}`;
+    const data = new FormData();
+    let errorCode = 0;
 
-    if (user.idNeverlate === 0) newUser.idNeverlate = parseInt(newUser.nif.slice(0, -1));
-    const url = "https://center.neverlate.es/ws/usuarios/wsRest.php?funcion=addBasic";
-
-    const data = {
-      clientId: 'MzUzPUFCQ0RFRkdISUpLTE1OT1BRUlNU',
-      token: 'opp5kTYKUqGyzzpBAUDB',
-      email: newUser.email,
-      nombre: newUser.name,
-      apellidos: newUser.apellidos,
-      dni: newUser.nif,
-      direccion: newUser.direccionFacturacion,
-      codigoPostal: newUser.codigoPostalFacturacion,
-      poblacion: newUser.poblacionFacturacion,
-      provincia: newUser.provinciaFacturacion,
-      pais: newUser.paisFacturacion,
-    };
+    data.append("clientId", process.env.TOKEN);
+    data.append("email", newUser.email);
+    data.append("nombre", newUser.name);
+    data.append("apellidos", newUser.apellidos);
+    data.append("dni", newUser.nif);
+    data.append("direccion", newUser.direccionFacturacion);
+    data.append("codigoPostal", newUser.codigoPostalFacturacion);
+    data.append("poblacion", newUser.poblacionFacturacion);
+    data.append("provincia", newUser.provinciaFacturacion);
+    data.append("pais", newUser.paisFacturacion);
 
     try {
-      const res = await axios.post(url, data, { headers });
+      const res = await axios.post(url, data, { headers: {...data.getHeaders()} });
       console.log('Response:', res.data);
+      errorCode = res.data.errorCode;
+      newUser.idNeverlate = res.data.return.id;
     } catch (error) {
       console.error('Error:', error);
       res.status(error.errorCode).json(error);
@@ -159,7 +158,8 @@ const editUserBilling = async (req, res) => {
     let userDb = await User.findByIdAndUpdate(_id, newUser);
     userDb = await User.findByIdAndUpdate(_id, { password: user.password })
     userDb.password = null;
-    res.status(200).json(userDb);
+    if (errorCode !== 200) return res.status(500).json(error);
+    else return res.status(200).json(userDb);
   } catch (error) {
     console.log('error', error);
     res.status(500).json(error);

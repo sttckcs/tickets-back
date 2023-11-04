@@ -7,7 +7,7 @@ const cors = require('cors');
 const { connectDB } = require('./src/utils/db');
 const userRouter = require('./src/api/routes/User.routes');
 const ticketRouter = require('./src/api/routes/Ticket.routes');
-const Ticket = require('./src/api/models/Ticket.model');
+const cron = require('./src/utils/cron.js');
 require('dotenv').config();
 
 const io = new Server(server, {
@@ -62,3 +62,5 @@ app.use((error, res) => {
 server.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
+
+cron();
