@@ -62,5 +62,3 @@ app.use((error, res) => {
 server.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });
-
-cron();
