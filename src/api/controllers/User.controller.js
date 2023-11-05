@@ -9,12 +9,12 @@ const { validationEmail, validationPassword } = require('../../validators/valida
 
 let transporter = nodemailer.createTransport({
   pool: true,
-  host: "mail.todoskins.com",
-  port: 465,
+  host: process.env.MAIL_HOST,
+  port: parseInt(process.env.MAIL_PORT),
   secure: true, // true for 465, false for other ports
   auth: {
-    user: 'skinsdream@todoskins.com', // generated ethereal user
-    pass: 'Rata1234567890', // generated ethereal password
+    user: process.env.MAIL_USER, // generated ethereal user
+    pass: process.env.MAIL_PASS, // generated ethereal password
   },
 });
 
@@ -131,7 +131,7 @@ const editUserBilling = async (req, res) => {
   try {
     const { newUser, _id } = req.body;
     const user = await User.findById(_id);
-    const url = `https://center.neverlate.es/ws/usuarios/wsRest.php?funcion=${user.idNeverlate === 0 ? 'addBasic' : 'updateUser'}`;
+    const url = process.env.BASE_SERVER_USERS_URL + (user.idNeverlate === 0 ? 'addBasic' : 'updateUser');
     const data = new FormData();
     let errorCode = 0;
 
@@ -147,8 +147,7 @@ const editUserBilling = async (req, res) => {
     data.append("pais", newUser.paisFacturacion);
 
     try {
-      const res = await axios.post(url, data, { headers: {...data.getHeaders()} });
-      console.log('Response:', res.data);
+      const res = await axios.post(url, data, { headers: { ...data.getHeaders() } });
       errorCode = res.data.errorCode;
       newUser.idNeverlate = res.data.return.id;
     } catch (error) {
@@ -238,7 +237,7 @@ const sendEmail = async (req, res) => {
   try {
     const { emails, subject, message } = req.body;
     const mailOptions = {
-      from: 'Todoskins',
+      from: 'Todoskins <skinsdream@todoskins.com>',
       bcc: emails,
       subject: subject,
       text: message,

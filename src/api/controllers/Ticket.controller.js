@@ -40,7 +40,7 @@ const addTicket = async (req, res, next) => {
         return next();
       }
       owner = await User.updateOne({ _id: owner.id }, { $push: { tickets: newTicket._id } });
-      await User.updateMany({ admin: { $eq: true }, chats: { $ne: newTicket._id } }, {$push: { chats: newTicket._id }})
+      await User.updateMany({ admin: { $eq: true }, chats: { $ne: newTicket._id } }, { $push: { chats: newTicket._id }})
       const createdTicket = await newTicket.save();
       return res.status(200).json(createdTicket);
   } catch (error) {
@@ -145,17 +145,17 @@ const sendMessageEmail = async (byAdmin, message, ticketid, owneremail) => {
   try {
     let transporter = nodemailer.createTransport({
       pool: true,
-      host: "mail.todoskins.com",
-      port: 465,
+      host: process.env.MAIL_HOST,
+      port: parseInt(process.env.MAIL_PORT),
       secure: true, // true for 465, false for other ports
       auth: {
-        user: 'skinsdream@todoskins.com', // generated ethereal user
-        pass: 'Rata1234567890', // generated ethereal password
+        user: process.env.MAIL_USER, // generated ethereal user
+        pass: process.env.MAIL_PASS, // generated ethereal password
       },
     });
 
     const mailOptions = {
-      from: 'skinsdream@todoskins.com',
+      from: 'Todoskins <skinsdream@todoskins.com>',
       bcc: emails,
       subject: `Nuevo mensaje en el ticket ${ticketid.substring(0,8)} de ${message.name}`,
       text: message.msg,
