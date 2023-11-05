@@ -5,16 +5,22 @@ const User = require('../api/models/User.model');
 const Bill = require('../api/models/Bill.model');
 
 const CronFunction = async () => {
-  cron.schedule('0 0 * * *', async () => {
+  cron.schedule('0 23 * * *', async () => {
     try {
       console.log('ejecutando cron');
       const url = process.env.BASE_SERVER_BILLS_URL + 'getListPaginas';
       const data = new FormData();    
       let facturas = [];
       const camposFactura = ['numeroString', 'fecha', 'receptorCif', 'totalImporte', 'documentoPdf'];
+
+      const currentDate = new Date();
+      const year = currentDate.getFullYear();
+      const month = String(currentDate.getMonth() + 1).padStart(2, '0'); 
+      const day = String(currentDate.getDate()).padStart(2, '0'); 
+      const formattedDate = `${year}-${month}-${day}`;
   
       data.append("clientId", process.env.TOKEN);
-      data.append("columnas", JSON.stringify({"dateCreated_min":"2023-11-01"}));
+      data.append("columnas", JSON.stringify({"dateCreated_min":formattedDate}));
   
       const res = await axios.post(url, data, { headers: { ...data.getHeaders() } });
       facturas = res.data.map(factura =>{
