@@ -20,7 +20,7 @@ let transporter = nodemailer.createTransport({
 
 const register = async (req, res) => {
   try {
-    const { nick, name, steam, phone, email, password } = req.body;
+    const { nick, steam, phone, email, password } = req.body;
 
     // Check if the email and password have valid formats or already exist
     if (await User.findOne({ nick: nick })) {
@@ -52,7 +52,6 @@ const register = async (req, res) => {
     // Create a new user
     const newUser = new User({
       nick,
-      name,
       steam,
       phone,
       email,
@@ -142,8 +141,8 @@ const editUserBilling = async (req, res) => {
     data.append("dni", newUser.nif);
     data.append("direccion", newUser.direccionFacturacion);
     data.append("codigoPostal", newUser.codigoPostalFacturacion);
-    data.append("poblacion", newUser.poblacionFacturacion);
-    data.append("provincia", newUser.provinciaFacturacion);
+    // data.append("poblacion", newUser.poblacionFacturacion);
+    // data.append("provincia", newUser.provinciaFacturacion);
     data.append("pais", newUser.paisFacturacion);
 
     try {
