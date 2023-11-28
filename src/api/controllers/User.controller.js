@@ -126,6 +126,19 @@ const editUser = async (req, res) => {
   }
 };
 
+const changePermissions = async (req, res) => {
+  try {
+    const { email } = req.body;
+    let user = await User.findOne({ email: email })
+    const toggleAdmin = !user.admin;
+    user = await User.findByIdAndUpdate(user._id, { admin: toggleAdmin })
+    res.status(200).json({ nick: user.nick, admin: !user.admin });
+  } catch (error) {
+    res.status(404).json('Usuario no encontrado');
+  }
+};
+
+
 const editUserBilling = async (req, res) => {
   try {
     const { newUser, _id } = req.body;
@@ -144,7 +157,8 @@ const editUserBilling = async (req, res) => {
     data.append("tipoPersona", newUser.empresa? '1' : '2');
     // data.append("poblacion", newUser.poblacionFacturacion);
     // data.append("provincia", newUser.provinciaFacturacion);
-    data.append("pais", newUser.paisFacturacion);
+    // data.append("pais", newUser.paisFacturacion);
+    console.log('data', data);
 
     try {
       const res = await axios.post(url, data, { headers: { ...data.getHeaders() } });
@@ -326,4 +340,4 @@ const logout = async (req, res) => {
   res.json({ message: 'Se ha cerrado sesión' });
 }
 
-module.exports = { register, login, getCurrentUser, editUser, editUserBilling, verifyUser, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }
+module.exports = { register, login, getCurrentUser, editUser, changePermissions, editUserBilling, verifyUser, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }
