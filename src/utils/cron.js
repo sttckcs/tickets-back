@@ -8,7 +8,7 @@ const User = require('../api/models/User.model');
 const Bill = require('../api/models/Bill.model');
 
 const CronFunction = async () => {
-  cron.schedule('0 23 * * *', async () => {
+  cron.schedule('10 * * * * *', async () => {
     try {
       console.log('ejecutando cron');
       const url = process.env.BASE_SERVER_BILLS_URL + 'getListPaginas';
