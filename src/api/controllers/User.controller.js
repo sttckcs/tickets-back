@@ -146,7 +146,7 @@ const editUserBilling = async (req, res) => {
     const url = process.env.BASE_SERVER_USERS_URL + (user.idNeverlate === 0 ? 'addBasic' : 'updateUser');
     const data = new FormData();
     let errorCode = 0;
-
+    console.log('url', url);
     data.append("clientId", process.env.TOKEN);
     data.append("email", newUser.email);
     data.append("nombre", newUser.name);
@@ -157,13 +157,13 @@ const editUserBilling = async (req, res) => {
     data.append("tipoPersona", newUser.empresa? '1' : '2');
     // data.append("poblacion", newUser.poblacionFacturacion);
     // data.append("provincia", newUser.provinciaFacturacion);
-    // data.append("pais", newUser.paisFacturacion);
-    console.log('data', data);
+    user.idNeverlate === 0 && data.append("pais[nombre]", newUser.paisFacturacion);
 
     try {
       const res = await axios.post(url, data, { headers: { ...data.getHeaders() } });
       errorCode = res.data.errorCode;
       newUser.idNeverlate = res.data.return.id;
+      console.log('data', res.data);
     } catch (error) {
       console.error('Error:', error);
       res.status(error.errorCode).json(error);
