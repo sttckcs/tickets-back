@@ -13,7 +13,7 @@ const UserSchema = new Schema({
   // poblacionFacturacion: { type: String, default: "" },
   // provinciaFacturacion: { type: String, default: "" },
   paisFacturacion: { type: String, default: "" },
-  name: { type: String, required: false },
+  name: { type: String, required: false, default: "" },
   steam: { type: String, required: true },
   verified: { type: Boolean, required: true, default: false },
   phone: { type: String, required: true },

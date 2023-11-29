@@ -168,7 +168,7 @@ const editUserBilling = async (req, res) => {
     data.append("dni", newUser.nif);
     data.append("direccion", newUser.direccionFacturacion);
     data.append("codigoPostal", newUser.codigoPostalFacturacion);
-    data.append("tipoPersona", newUser.empresa? '1' : '2');
+    data.append("tipoPersona", !newUser.empresa ? '1' : '2');
     // data.append("poblacion", newUser.poblacionFacturacion);
     // data.append("provincia", newUser.provinciaFacturacion);
     user.idNeverlate === 0 && data.append("pais[nombre]", newUser.paisFacturacion);
