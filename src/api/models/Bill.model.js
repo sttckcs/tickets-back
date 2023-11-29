@@ -7,7 +7,7 @@ const BillSchema = new Schema({
   numero: { type: String, required: true },
   fecha: { type: String, required: true },
   totalImporte: { type: String, required: true },
-  ruta: { type: String, required: true },
+  pdf: { type: String, required: true},
 },{
   timestamps: true
 });

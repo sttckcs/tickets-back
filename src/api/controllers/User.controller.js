@@ -4,6 +4,7 @@ const User = require('../models/User.model');
 const Bill = require('../models/Bill.model');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
+const fs = require('fs');
 const FormData = require('form-data');
 const { validationEmail, validationPassword } = require('../../validators/validation')
 
@@ -110,6 +111,19 @@ const getCurrentUser = async (req, res) => {
     res.status(200).json(user);
   } catch (error) {
     res.status(500).json(error);
+  }
+};
+
+const getBillPDF = async (req, res) => {
+  const billId = req.params.billId;
+  try {
+    const bill = await Bill.findById(billId);
+    if (!bill) return res.status(404).json({ message: 'No se encuentra la factura' });
+    const fileStream = fs.createReadStream(bill.pdf)
+    fileStream.pipe(res);
+  } catch (error) {
+    console.log(error)
+    res.status(500).json({ message: error });
   }
 };
 
@@ -340,4 +354,4 @@ const logout = async (req, res) => {
   res.json({ message: 'Se ha cerrado sesión' });
 }
 
-module.exports = { register, login, getCurrentUser, editUser, changePermissions, editUserBilling, verifyUser, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }
+module.exports = { register, login, getCurrentUser, editUser, getBillPDF, changePermissions, editUserBilling, verifyUser, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }
