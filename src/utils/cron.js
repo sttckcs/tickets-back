@@ -8,7 +8,7 @@ const User = require('../api/models/User.model');
 const Bill = require('../api/models/Bill.model');
 
 const CronFunction = async () => {
-  cron.schedule('10 * * * * *', async () => {
+  cron.schedule('0 23 * * *', async () => {
     try {
       console.log('ejecutando cron');
       const url = process.env.BASE_SERVER_BILLS_URL + 'getListPaginas';
@@ -20,7 +20,7 @@ const CronFunction = async () => {
       const year = currentDate.getFullYear();
       const month = String(currentDate.getMonth() + 1).padStart(2, '0'); 
       const day = String(currentDate.getDate()).padStart(2, '0'); 
-      const formattedDate = `${year}-${month}-${28}`;
+      const formattedDate = `${year}-${month}-${29}`;
   
       data.append("clientId", process.env.TOKEN);
       data.append("columnas", JSON.stringify({"dateCreated_min":formattedDate}));

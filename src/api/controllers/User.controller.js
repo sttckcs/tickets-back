@@ -209,6 +209,19 @@ const verifyUser = async (req, res) => {
   }
 };
 
+const verifyAdmin = async (req, res) => {
+  try {
+    const { email } = req.body;
+    let user = await User.findOne({ email: email })
+    if (!user) return res.status(404).json({ code: 404, message: 'Usuario no encontrado' });
+    if (user.verified) return res.status(304).json({ code: 304, message: 'Ya verificado' })
+    user = await User.updateOne({ _id: user._id }, { $set: { verified: true } })
+    return res.status(200).json({ code: 200, message: 'Verificado', nick: user.nick });
+  } catch (error) {
+  return res.status(500).json({ code: 500, message: error });
+}
+};
+
 const recoverPassword = async (req, res) => {
   try {
     const { token, nick } = req.body;
@@ -292,6 +305,7 @@ const sendRecoveryEmail = async (req, res) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email: email })
+    if (!user) return res.status(404).send({ code: 404, message: 'No se encuentra el usuario' });
     const nick = user.nick;
     const token = user.password.replace(/[/.]/g,'')
 
@@ -302,20 +316,22 @@ const sendRecoveryEmail = async (req, res) => {
       text: `${nick}`,
       html: `<div><h2>Hola! Recupera tu cuenta haciendo click aquí:</h2><a href='https://todoskins.com/recover/${nick}/${token}'>Recupera tu cuenta aquí</a></div>`,
     }
-    
+
+
     transporter.sendMail(mailOptions, (error, info) => {
       if (error){
         console.log(error);
-        res.status(500).send('Error enviando los correos. Comprueba los logs');
+        res.status(500).send({ code: 500, message: 'Error enviando los correos. Comprueba los logs' });
       } else {
         console.log('Message sent: ' + info.response);
         res.status(200);
      };
+     
      return res.end();
    });
   } catch (error) {
-      console.error('Error sending emails:', error);
-      res.status(500).send('Error enviando los correos. Comprueba los logs');
+    console.error('Error sending emails:', error);
+    res.status(500).send('Problema de servidor');
   }
 };
 
@@ -354,4 +370,4 @@ const logout = async (req, res) => {
   res.json({ message: 'Se ha cerrado sesión' });
 }
 
-module.exports = { register, login, getCurrentUser, editUser, getBillPDF, changePermissions, editUserBilling, verifyUser, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }
+module.exports = { register, login, getCurrentUser, editUser, getBillPDF, changePermissions, editUserBilling, verifyUser, verifyAdmin, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }
