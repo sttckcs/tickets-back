@@ -209,6 +209,21 @@ const verifyUser = async (req, res) => {
   }
 };
 
+const resendVerifyEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    let user = await User.findOne({ email: email })
+    if (!user) return res.status(404).json({ code: 404, message: 'Usuario no encontrado' });
+    if (user.verified) return res.status(304).json({ code: 304, message: 'Usuario ya verificado' });
+    const token = user.password.replace(/[/.]/g,'') 
+    const nick = user.nick;
+    sendVerifyEmail(email, nick, token);
+    return res.status(200).send({ code: 200, message: 'Correo enviado' })
+  } catch (error) {
+    return res.status(500).json({ code: 500, message: error });
+  }
+};
+
 const verifyAdmin = async (req, res) => {
   try {
     const { email } = req.body;
@@ -370,4 +385,4 @@ const logout = async (req, res) => {
   res.json({ message: 'Se ha cerrado sesión' });
 }
 
-module.exports = { register, login, getCurrentUser, editUser, getBillPDF, changePermissions, editUserBilling, verifyUser, verifyAdmin, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }
+module.exports = { register, login, getCurrentUser, editUser, getBillPDF, changePermissions, editUserBilling, verifyUser, resendVerifyEmail, verifyAdmin, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }

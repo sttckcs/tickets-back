@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const authMiddleware = require('../../middlewares/auth')
-const {register, login, getCurrentUser, changePermissions, editUser, editUserBilling, getAllUserEmails, getBillPDF, verifyUser, verifyAdmin, recoverPassword, changePassword, getUserById, sendEmail, sendRecoveryEmail, logout} = require('../controllers/User.controller')
+const {register, login, getCurrentUser, changePermissions, editUser, editUserBilling, getAllUserEmails, getBillPDF, verifyUser, resendVerifyEmail, verifyAdmin, recoverPassword, changePassword, getUserById, sendEmail, sendRecoveryEmail, logout} = require('../controllers/User.controller')
 
 router.get('/current', [authMiddleware], getCurrentUser);
 router.get('/emails', [authMiddleware], getAllUserEmails);
@@ -12,6 +12,7 @@ router.post('/recover', recoverPassword);
 router.post('/password', changePassword);
 router.post('/email', [authMiddleware], sendEmail);
 router.post('/recovery', sendRecoveryEmail);
+router.post('/sendverify', resendVerifyEmail);
 router.post('/register', register);
 router.post('/login', login);
 router.post('/logout', logout);
