@@ -1,10 +1,33 @@
 const Ticket = require('../models/Ticket.model');
 const User = require('../models/User.model');
 const nodemailer = require('nodemailer');
+const cloudinary = require('cloudinary').v2;
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+
+cloudinary.config({ 
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_KEY, 
+  api_secret: process.env.CLOUDINARY_SECRET
+});
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, './uploads'); 
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname);
+  }
+});
+
+const upload = multer({ storage: storage });
+
 const getAllTickets = async (req, res) => {
   try {
       const allTickets = (await Ticket.find().populate('user')).reverse();
-      return res.status(200).json(allTickets);
+      const openTickets = allTickets.filter(ticket => ticket.open)
+      return res.status(200).json(openTickets);
   } catch (error) {
       return res.status(500).json(error);
   }
@@ -19,6 +42,40 @@ const getUserTickets = async (req, res) => {
   }
 }
 
+  const uploadImage = async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ code: 400, message: 'No se ha seleccionado imagen' });
+      }
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: 'chat_images'
+      });
+  
+      const imageUrl = result.secure_url;
+
+      clearUploadsFolder();
+
+      res.status(200).json({ imageUrl });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ code: 500, message: 'Error de servidor' });
+    }
+  };
+
+  const clearUploadsFolder = () => {
+    const directory = './uploads';
+  
+    fs.readdir(directory, (err, files) => {
+      if (err) throw err;
+  
+      for (const file of files) {
+        fs.unlink(path.join(directory, file), err => {
+          if (err) throw err;
+        });
+      }
+    });
+  };
+
 const addTicket = async (req, res, next) => {
   try {
       const { user, description, category, notify } = req.body;
@@ -31,7 +88,7 @@ const addTicket = async (req, res, next) => {
       const newTicket = new Ticket({ user: user, description: description, category: category, notifyUser: notify, messages: message });
       const sameTicket = owner.tickets.filter(
         ticket => {
-          if(ticket.category === category && ticket.open) return true
+          if (ticket.category === category && ticket.open) return true
           return false
         }
       )
@@ -174,4 +231,4 @@ const sendMessageEmail = async (byAdmin, message, ticketid, owneremail) => {
   }
 };
 
-module.exports = { getAllTickets, getUserTickets, addTicket, toggleNotis, closeTicket, addTicketMessage, getTicketMessages, ticketOwnerAndStatus, deleteTicket }
+module.exports = { getAllTickets, getUserTickets, addTicket, uploadImage, upload, toggleNotis, closeTicket, addTicketMessage, getTicketMessages, ticketOwnerAndStatus, deleteTicket }
