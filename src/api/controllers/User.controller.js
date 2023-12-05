@@ -142,7 +142,9 @@ const editUser = async (req, res) => {
 
 const changePermissions = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, id } = req.body;
+    const admin = await User.findById(id);
+    if (!admin || !admin.admin ) res.status(401).json({ code: 401, message: 'No estás autorizado' });
     let user = await User.findOne({ email: email })
     const toggleAdmin = !user.admin;
     user = await User.findByIdAndUpdate(user._id, { admin: toggleAdmin })
@@ -226,7 +228,9 @@ const resendVerifyEmail = async (req, res) => {
 
 const verifyAdmin = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, id } = req.body;
+    const admin = await User.findById(id);
+    if (!admin || !admin.admin ) res.status(401).json({ code: 401, message: 'No estás autorizado' });
     let user = await User.findOne({ email: email })
     if (!user) return res.status(404).json({ code: 404, message: 'Usuario no encontrado' });
     if (user.verified) return res.status(304).json({ code: 304, message: 'Ya verificado' })
