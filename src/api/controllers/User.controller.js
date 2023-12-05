@@ -114,6 +114,18 @@ const getCurrentUser = async (req, res) => {
   }
 };
 
+const getAllAdmins = async (req, res) => {
+  try {
+    const { id } = req.body;
+    const admin = await User.findById(id);
+    if (!admin || !admin.admin ) res.status(401).json({ code: 401, message: 'No estás autorizado' });
+    const admins = await User.find({ admin: true }, { projection: { nick: 1, email: 1, _id: 0 }}).toArray();
+    res.status(200).json(admins);
+  } catch (error) {
+    res.status(500).json(error);
+  }
+};
+
 const getBillPDF = async (req, res) => {
   const billId = req.params.billId;
   try {
