@@ -132,7 +132,7 @@ const editUser = async (req, res) => {
     const { newUser, _id } = req.body;
     const user = await User.findById(_id);
     let userDb = await User.findByIdAndUpdate(_id, newUser);
-    userDb = await User.findByIdAndUpdate(_id, { password: user.password })
+    userDb = await User.findByIdAndUpdate(_id, { password: user.password, admin: false })
     userDb.password = null;
     res.status(200).json(userDb);
   } catch (error) {

@@ -26,8 +26,7 @@ const upload = multer({ storage: storage });
 const getAllTickets = async (req, res) => {
   try {
       const allTickets = (await Ticket.find().populate('user')).reverse();
-      const openTickets = allTickets.filter(ticket => ticket.open)
-      return res.status(200).json(openTickets);
+      return res.status(200).json(allTickets);
   } catch (error) {
       return res.status(500).json(error);
   }
@@ -54,7 +53,7 @@ const getUserTickets = async (req, res) => {
       const imageUrl = result.secure_url;
 
       clearUploadsFolder();
-
+      console.log('imageUrl', imageUrl);
       res.status(200).json({ imageUrl });
     } catch (error) {
       console.error(error);
