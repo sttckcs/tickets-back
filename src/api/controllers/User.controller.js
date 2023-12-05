@@ -118,7 +118,7 @@ const getAllAdmins = async (req, res) => {
   try {
     const { id } = req.body;
     const admin = await User.findById(id);
-    if (!admin || !admin.admin ) res.status(401).json({ code: 401, message: 'No estás autorizado' });
+    if (!admin || !admin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
     const admins = await User.find({ admin: true }, { projection: { nick: 1, email: 1, _id: 0 }}).toArray();
     res.status(200).json(admins);
   } catch (error) {
@@ -156,7 +156,7 @@ const changePermissions = async (req, res) => {
   try {
     const { email, id } = req.body;
     const admin = await User.findById(id);
-    if (!admin || !admin.admin ) res.status(401).json({ code: 401, message: 'No estás autorizado' });
+    if (!admin || !admin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
     let user = await User.findOne({ email: email })
     const toggleAdmin = !user.admin;
     user = await User.findByIdAndUpdate(user._id, { admin: toggleAdmin })
@@ -242,7 +242,7 @@ const verifyAdmin = async (req, res) => {
   try {
     const { email, id } = req.body;
     const admin = await User.findById(id);
-    if (!admin || !admin.admin ) res.status(401).json({ code: 401, message: 'No estás autorizado' });
+    if (!admin || !admin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
     let user = await User.findOne({ email: email })
     if (!user) return res.status(404).json({ code: 404, message: 'Usuario no encontrado' });
     if (user.verified) return res.status(304).json({ code: 304, message: 'Ya verificado' })
