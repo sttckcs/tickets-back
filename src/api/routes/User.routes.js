@@ -5,10 +5,10 @@ const {register, login, getCurrentUser, getAllAdmins, changePermissions, editUse
 
 router.get('/current', [authMiddleware], getCurrentUser);
 router.get('/emails', [authMiddleware], getAllUserEmails);
-router.get('/admins', [authMiddleware], getAllAdmins);
 router.get('/bills/:billId', [authMiddleware], getBillPDF);
 router.post('/id', [authMiddleware], getUserById);
 router.post('/verify', verifyUser);
+router.post('/admins', [authMiddleware], getAllAdmins);
 router.post('/recover', recoverPassword);
 router.post('/password', changePassword);
 router.post('/email', [authMiddleware], sendEmail);
