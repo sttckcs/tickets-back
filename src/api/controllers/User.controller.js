@@ -270,7 +270,7 @@ const changePassword = async (req, res, next) => {
   try {
     const { nick, id, password } = req.body;
     let user = await User.findOne({ nick: nick })
-    if (user._id !== id) return res.status(403).send({ code: 403, message: 'No estás autorizado' })
+    if (JSON.stringify(user._id) !== `${id}`) return res.status(403).send({ code: 403, message: 'No estás autorizado' })
     const passVal = validationPassword(password);
     if (passVal !== 'Valid') {
       console.log({ code: 403, message: passVal })
