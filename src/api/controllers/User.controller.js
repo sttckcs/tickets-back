@@ -191,7 +191,6 @@ const editUserBilling = async (req, res) => {
       const res = await axios.post(url, data, { headers: { ...data.getHeaders() } });
       errorCode = res.data.errorCode;
       newUser.idNeverlate = res.data.return.id;
-      console.log('data', res.data);
     } catch (error) {
       console.error('Error:', error);
       res.status(error.errorCode).json(error);
@@ -255,22 +254,23 @@ const verifyAdmin = async (req, res) => {
 
 const recoverPassword = async (req, res) => {
   try {
-    const { token, nick } = req.body;
+    const { token, nick, id } = req.body;
     let user = await User.findOne({ nick: nick })
     const verifyPassword = user.password.replace(/[/.]/g,'')
-    if (verifyPassword === token && user.verified) {
+    if (verifyPassword === token && user.verified && user._id.toString() === id) {
       return res.status(200).json('confirmed');
     }
     else return res.status(500).send('Error intentando recuperar la contraseña');
   } catch (error) {
-    return res.status(500).json(error);
+    return res.status(500).json({ code: 500, message: error });
   }
 };
 
 const changePassword = async (req, res, next) => {
   try {
-    const { nick, password } = req.body;
+    const { nick, id, password } = req.body;
     let user = await User.findOne({ nick: nick })
+    if (user._id !== id) return res.status(403).send({ code: 403, message: 'No estás autorizado' })
     const passVal = validationPassword(password);
     if (passVal !== 'Valid') {
       console.log({ code: 403, message: passVal })
@@ -288,7 +288,7 @@ const changePassword = async (req, res, next) => {
 
 const getUserById = async (req, res) => {
   try {
-    const {id} = req.body
+    const { id } = req.body
     const user = await User.findById(id).select('-password').populate('tickets').populate('chats').populate('facturas');
     res.status(200).json(user);
   } catch (error) {
@@ -297,6 +297,9 @@ const getUserById = async (req, res) => {
 };
 
 const getAllUserEmails = async (req, res) => {
+  const { id } = req.body;
+  const admin = await User.findById(id);
+  if (!admin || !admin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
   try {
     const emails = (await User.find({}, { email: 1, _id: false })).map(function(u) { return u.email })
     res.status(200).json(emails);
@@ -307,7 +310,9 @@ const getAllUserEmails = async (req, res) => {
 
 const sendEmail = async (req, res) => {
   try {
-    const { emails, subject, message } = req.body;
+    const { emails, id, subject, message } = req.body;
+    const admin = await User.findById(id);
+    if (!admin || !admin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
     const mailOptions = {
       from: 'Todoskins <skinsdream@todoskins.com>',
       bcc: emails,
@@ -345,10 +350,10 @@ const sendRecoveryEmail = async (req, res) => {
       to: email,
       subject: 'Recupera tu cuenta',
       text: `${nick}`,
-      html: `<div><h2>Hola! Recupera tu cuenta haciendo click aquí:</h2><a href='https://todoskins.com/recover/${nick}/${token}'>Recupera tu cuenta aquí</a></div>`,
+      html: `<div><h2>Hola! Recupera tu cuenta haciendo click aquí:</h2><a href='https://todoskins.com/recover/${user.id}/${nick}/${token}'>Recupera tu cuenta aquí</a></div>`,
     }
 
-
+    console.log('mailOptions', mailOptions);
     transporter.sendMail(mailOptions, (error, info) => {
       if (error){
         console.log(error);

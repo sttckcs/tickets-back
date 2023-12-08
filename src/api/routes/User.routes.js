@@ -4,8 +4,8 @@ const authMiddleware = require('../../middlewares/auth')
 const {register, login, getCurrentUser, getAllAdmins, changePermissions, editUser, editUserBilling, getAllUserEmails, getBillPDF, verifyUser, resendVerifyEmail, verifyAdmin, recoverPassword, changePassword, getUserById, sendEmail, sendRecoveryEmail, logout} = require('../controllers/User.controller')
 
 router.get('/current', [authMiddleware], getCurrentUser);
-router.get('/emails', [authMiddleware], getAllUserEmails);
 router.get('/bills/:billId', [authMiddleware], getBillPDF);
+router.post('/emails', [authMiddleware], getAllUserEmails);
 router.post('/id', [authMiddleware], getUserById);
 router.post('/verify', verifyUser);
 router.post('/admins', [authMiddleware], getAllAdmins);
