@@ -116,9 +116,11 @@ const getCurrentUser = async (req, res) => {
 
 const getAllAdmins = async (req, res) => {
   try {
-    const { id } = req.body;
-    const admin = await User.findById(id);
-    if (!admin || !admin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const userAdmin = await User.findById(decodedToken.userId);
+
+    if (!userAdmin || !userAdmin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
     const admins = await User.find({ admin: true }).populate();
     res.status(200).json(admins.map(admin => { return { nick: admin.nick, email: admin.email } }));
   } catch (error) {
@@ -197,7 +199,7 @@ const editUserBilling = async (req, res) => {
     }
 
     let userDb = await User.findByIdAndUpdate(_id, newUser);
-    userDb = await User.findByIdAndUpdate(_id, { password: user.password })
+    userDb = await User.findByIdAndUpdate(_id, { password: user.password, admin: false })
     userDb.password = null;
     if (errorCode !== 200) return res.status(500).json(error);
     else return res.status(200).json(userDb);
@@ -254,23 +256,42 @@ const verifyAdmin = async (req, res) => {
 
 const recoverPassword = async (req, res) => {
   try {
-    const { token, nick, id } = req.body;
-    let user = await User.findOne({ nick: nick })
-    const verifyPassword = user.password.replace(/[/.]/g,'')
-    if (verifyPassword === token && user.verified && user._id.toString() === id) {
-      return res.status(200).json('confirmed');
+    const { token } = req.body;
+    const decodedToken = Buffer.from(token, 'base64').toString('ascii');
+    let id = '';
+
+    jwt.verify(decodedToken, process.env.JWT_KEY, (err, decoded) => {
+      id = decoded.userId;
+      if (err) {
+        return res.status(401).json({ code: 401, message: 'El token no es válido' });
+      }
+    });
+    let user = await User.findById(id);
+
+    if (user.verified) {
+      return res.status(200).json({ code: 200, message: 'confirmed' });
     }
-    else return res.status(500).send('Error intentando recuperar la contraseña');
+
+    else return res.status(304).send({ code: 304, message: 'El usuario no está verificado' });
   } catch (error) {
-    return res.status(500).json({ code: 500, message: error });
+    return res.status(500).json({ code: 500, message: error.message });
   }
 };
 
 const changePassword = async (req, res, next) => {
   try {
-    const { nick, id, password } = req.body;
-    let user = await User.findOne({ nick: nick })
-    if (JSON.stringify(user._id) !== `${id}`) return res.status(403).send({ code: 403, message: 'No estás autorizado' })
+    const { token, password } = req.body;
+    const decodedToken = Buffer.from(token, 'base64').toString('ascii');
+    let id = '';
+
+    jwt.verify(decodedToken, process.env.JWT_KEY, (err, decoded) => {
+      id = decoded.userId;
+      if (err) {
+        return res.status(401).json({ code: 401, message: 'El token no es válido' });
+      }
+    });
+
+    let user = await User.findById(id);
     const passVal = validationPassword(password);
     if (passVal !== 'Valid') {
       console.log({ code: 403, message: passVal })
@@ -296,23 +317,16 @@ const getUserById = async (req, res) => {
   }
 };
 
-const getAllUserEmails = async (req, res) => {
-  const { id } = req.body;
-  const admin = await User.findById(id);
-  if (!admin || !admin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
-  try {
-    const emails = (await User.find({}, { email: 1, _id: false })).map(function(u) { return u.email })
-    res.status(200).json(emails);
-  } catch (error) {
-    res.status(500).json(error);
-  }
-};
-
 const sendEmail = async (req, res) => {
   try {
-    const { emails, id, subject, message } = req.body;
-    const admin = await User.findById(id);
-    if (!admin || !admin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
+    const { subject, message } = req.body;
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const userAdmin = await User.findById(decodedToken.userId);
+
+    if (!userAdmin || !userAdmin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
+
+    const emails = (await User.find({}, { email: 1, _id: false })).map(function(u) { return u.email })
     const mailOptions = {
       from: 'Todoskins <skinsdream@todoskins.com>',
       bcc: emails,
@@ -342,15 +356,15 @@ const sendRecoveryEmail = async (req, res) => {
     const { email } = req.body;
     const user = await User.findOne({ email: email })
     if (!user) return res.status(404).send({ code: 404, message: 'No se encuentra el usuario' });
-    const nick = user.nick;
-    const token = user.password.replace(/[/.]/g,'')
 
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_KEY, { expiresIn: '15m' });
+    const encodedToken = Buffer.from(token).toString('base64');
     const mailOptions = { 
       from: 'Todoskins <skinsdream@todoskins.com>',
       to: email,
       subject: 'Recupera tu cuenta',
-      text: `${nick}`,
-      html: `<div><h2>Hola! Recupera tu cuenta haciendo click aquí:</h2><a href='https://todoskins.com/recover/${user.id}/${nick}/${token}'>Recupera tu cuenta aquí</a></div>`,
+      text: `${user.nick}`,
+      html: `<div><h2>Hola! Recupera tu cuenta haciendo click aquí:</h2><a href='https://todoskins.com/recover/${encodedToken}'>Recupera tu cuenta aquí</a></div>`,
     }
 
     console.log('mailOptions', mailOptions);
@@ -406,4 +420,4 @@ const logout = async (req, res) => {
   res.json({ message: 'Se ha cerrado sesión' });
 }
 
-module.exports = { register, login, getCurrentUser, getAllAdmins, editUser, getBillPDF, changePermissions, editUserBilling, verifyUser, resendVerifyEmail, verifyAdmin, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }
+module.exports = { register, login, getCurrentUser, getAllAdmins, editUser, getBillPDF, changePermissions, editUserBilling, verifyUser, resendVerifyEmail, verifyAdmin, recoverPassword, changePassword, getUserById, sendEmail, sendRecoveryEmail, logout }

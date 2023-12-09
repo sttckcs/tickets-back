@@ -5,6 +5,7 @@ const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_NAME,
@@ -25,12 +26,15 @@ const upload = multer({ storage: storage });
 
 const getAllTickets = async (req, res) => {
   try {
-      const { id } = req.body;
-      const admin = await User.findById(id);
-      if (!admin || !admin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
+      const token = req.cookies.token;
+      const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+      const userAdmin = await User.findById(decodedToken.userId);
+      
+      if (!userAdmin || !userAdmin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
       const allTickets = (await Ticket.find().populate('user', '-password')).reverse();
       return res.status(200).json(allTickets);
   } catch (error) {
+      console.log('error', error);
       return res.status(500).json(error);
   }
 }
@@ -145,8 +149,11 @@ const addTicket = async (req, res, next) => {
 
 const closeTicket = async (req, res) => {
   try {
-      const { _id, open, admin } = req.body;
-      const userAdmin = await User.findById(admin);
+      const { _id, open } = req.body;
+      const token = req.cookies.token;
+      const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+      const userAdmin = await User.findById(decodedToken.userId);
+
       if (!userAdmin || !userAdmin.admin) return res.status(403).json({ code: 403, message: 'No estás autorizado' });
       let ticket = await Ticket.findById(_id);
       if (open) {
@@ -204,7 +211,7 @@ const addTicketMessage = async (req, res) => {
 const getTicketMessages = async (req, res) => {
   try {
       const { id } = req.body;
-      const messages = await Ticket.find({ _id: id} , { _id: 0, messages: 1 })
+      const messages = await Ticket.find({ _id: id } , { _id: 0, messages: 1 })
       return res.status(200).json(messages[0])
   } catch (error) {
       return res.status(500).json(error);
@@ -223,8 +230,11 @@ const ticketOwnerAndStatus = async (req, res) => {
 
 const deleteTicket = async (req, res) => {
   try {
-      const { _id, admin } = req.body;
-      const userAdmin = await User.findById(admin);
+      const { _id } = req.body;
+      const token = req.cookies.token;
+      const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+      const userAdmin = await User.findById(decodedToken.userId);
+
       if (!userAdmin || !userAdmin.admin) return res.status(403).json({ code: 403, message: 'No estás autorizado' });
       const TicketDb = await Ticket.findByIdAndDelete(_id);
       if (!TicketDb) {
