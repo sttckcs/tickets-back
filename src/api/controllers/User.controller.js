@@ -131,7 +131,12 @@ const getAllAdmins = async (req, res) => {
 const getBillPDF = async (req, res) => {
   const billId = req.params.billId;
   try {
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const user = await User.findById(decodedToken.userId);
     const bill = await Bill.findById(billId);
+
+    if (!user.admin && bill.usuario != user.id) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
     if (!bill) return res.status(404).json({ message: 'No se encuentra la factura' });
     const fileStream = fs.createReadStream(bill.pdf)
     fileStream.pipe(res);
