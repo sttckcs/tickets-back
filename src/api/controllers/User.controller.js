@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User.model');
+const Ticket = require('../models/Ticket.model');
 const Bill = require('../models/Bill.model');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
@@ -61,11 +62,13 @@ const register = async (req, res) => {
 
     // Save the user to the database
     const createUser = await newUser.save();
+    console.log('createUser', createUser);
     createUser.password = null;
     const token = hashedPassword.replace(/[/.]/g,'')
     sendVerifyEmail(email, nick, token);
     return res.status(201).json(createUser);
   } catch (error) {
+    console.log('error', error);
     return res.status(500).json(error);
   }
 }
@@ -124,6 +127,39 @@ const getAllAdmins = async (req, res) => {
     const admins = await User.find({ admin: true }).populate();
     res.status(200).json(admins.map(admin => { return { nick: admin.nick, email: admin.email } }));
   } catch (error) {
+    res.status(500).json(error);
+  }
+};
+
+const getStatistics = async (req, res) => {
+  try {
+    const { interval, startDate, endDate, pais } = req.body;
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const userAdmin = await User.findById(decodedToken.userId);
+    const today = new Date();
+    let day = new Date();
+
+    if (!userAdmin || !userAdmin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
+
+    if (interval === 'day') {
+      day = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    } else if (interval === 'week') {
+      day = new Date(today.getTime() - 24 * 60 * 60 * 1000 * 7);
+    } else if (interval === 'month') {
+      day = new Date(today.getTime() - 24 * 60 * 60 * 1000 * 30);
+    } else if (interval === 'year') {
+      day = new Date(today.getTime() - 24 * 60 * 60 * 1000 * 365);
+    }
+
+    const query = { createdAt: { $gte: day, $lte: today }};
+    const ticket = await Ticket.countDocuments(query);
+    const bill = await Bill.countDocuments(query);
+    if (pais) query.paisFacturacion = { $regex: new RegExp(pais, 'i') };
+    const user = await User.countDocuments(query);
+    return res.status(200).json({ code: 200, user, ticket, bill })
+  } catch (error) {
+    console.log(error);
     res.status(500).json(error);
   }
 };
@@ -425,4 +461,4 @@ const logout = async (req, res) => {
   res.json({ message: 'Se ha cerrado sesión' });
 }
 
-module.exports = { register, login, getCurrentUser, getAllAdmins, editUser, getBillPDF, changePermissions, editUserBilling, verifyUser, resendVerifyEmail, verifyAdmin, recoverPassword, changePassword, getUserById, sendEmail, sendRecoveryEmail, logout }
+module.exports = { register, login, getCurrentUser, getAllAdmins, getStatistics, editUser, getBillPDF, changePermissions, editUserBilling, verifyUser, resendVerifyEmail, verifyAdmin, recoverPassword, changePassword, getUserById, sendEmail, sendRecoveryEmail, logout }

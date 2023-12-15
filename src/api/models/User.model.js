@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 
 const UserSchema = new Schema({
   nick: { type: String, required: true, unique: true },
-  idNeverlate: { type: Number, unique: true, default: 0 },
+  idNeverlate: { type: Number, default: 0 },
   apellidos: { type: String, default: "" },
   nif: { type: String, unique: true, default: "" },
   empresa: { type: Boolean, default: false },
