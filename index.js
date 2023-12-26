@@ -12,7 +12,7 @@ const cronMensajes = require('./src/utils/cronMensajes.js');
 require('dotenv').config();
 
 const io = new Server(server, {
-  cors: { origin: 'https://todoskins.com' }
+  cors: { origin: ['https://todoskins.com', 'https://localhost:5173'] }
 });
 const port = process.env.PORT || 3030;
 
@@ -20,14 +20,14 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Method', 'POST, GET, DELETE, PUT, PATCH');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Origin, Accept');
-  res.header('Access-Control-Allow-Origin', 'https://todoskins.com');
+  res.header('Access-Control-Allow-Origin', ['https://todoskins.com', 'http://localhost:5173']);
   next();
 })
 
 app.use(express.json({limit: '5mb'}));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(cors({ credentials: true, origin: 'https://todoskins.com' }));
+app.use(cors({ credentials: true, origin: ['https://todoskins.com', 'http://localhost:5173'] }));
 
 connectDB();
 
