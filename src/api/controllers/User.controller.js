@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User.model');
+const Ticket = require('../models/Ticket.model');
 const Bill = require('../models/Bill.model');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
@@ -75,7 +76,7 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     // Check if the user exists
-    const user = await User.findOne({ email }).populate('tickets').populate('chats').populate('facturas');
+    const user = await User.findOne({ email }).populate({ path: 'tickets', select: '_id open category adminLast createdAt' }).populate('facturas');
     if (!user) {
       return res.status(401).json({ message: 'Correo o contraseña incorrectas' });
     }
@@ -86,9 +87,9 @@ const login = async (req, res) => {
       return res.status(401).json({ message: 'Correo o contraseña incorrectas' });
     }
 
-    if (!user.verified) {
-      return res.status(401).json({ message: 'La cuenta no está verificada' });
-    }
+    // if (!user.verified) {
+    //  return res.status(401).json({ message: 'La cuenta no está verificada' });
+    // }
 
     // Create and sign a JWT token
     const token = jwt.sign({ userId: user._id }, process.env.JWT_KEY);
@@ -99,16 +100,78 @@ const login = async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000 // 1 day
     });
 
-    return res.json({ user });
+    return res.json(user);
   } catch (error) {
     return res.status(500).json(error);
   }
 }
+
 const getCurrentUser = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const user = await User.findById(userId).select('-password').populate('tickets').populate('chats').populate('facturas');
+    const user = await User.findById(userId).select('-password').populate({ path: 'tickets', select: '_id open category adminLast createdAt' }).populate('facturas');
     res.status(200).json(user);
+  } catch (error) {
+    res.status(500).json(error);
+  }
+};
+
+const getStatistics = async (req, res) => {
+  try {
+    const { interval, startDate, endDate, pais } = req.body;
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const userAdmin = await User.findById(decodedToken.userId);
+    if (!userAdmin || !userAdmin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
+
+    let today = new Date();
+    const intervals = {
+      day: 1,
+      week: 7,
+      month: 30,
+      year: 365,
+      custom: 1
+    };
+    const intervalInDays = intervals[interval] || 1
+    let day = new Date(today.getTime() - 24 * 60 * 60 * 1000 * intervalInDays);
+    if (interval === 'custom') {
+      today = endDate;
+      day = startDate;
+    }
+    let user = 0;
+    let ticket = 0;
+    let bill = 0;
+    const query = { createdAt: { $gte: day, $lte: today }};
+
+    if (pais) {
+      query.paisFacturacion = { $regex: new RegExp(pais, 'i') };
+      user = await User.countDocuments(query);
+      listOfUsers = await User.find(query);
+
+      const userIds = listOfUsers.map(user => user._id);
+      ticket = await Ticket.countDocuments({ user: { $in: userIds }, createdAt: { $gte: day, $lte: today } });
+      bill = await Bill.countDocuments({ usuario: { $in: userIds }, createdAt: { $gte: day, $lte: today } });
+    } else {
+      ticket = await Ticket.countDocuments(query);
+      bill = await Bill.countDocuments(query);
+      user = await User.countDocuments(query);
+    }
+    return res.status(200).json({ code: 200, user, ticket, bill })
+  } catch (error) {
+    console.log(error);
+    res.status(500).json(error);
+  }
+};
+
+const getAllAdmins = async (req, res) => {
+  try {
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const userAdmin = await User.findById(decodedToken.userId);
+
+    if (!userAdmin || !userAdmin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
+    const admins = await User.find({ admin: true }).populate();
+    res.status(200).json(admins.map(admin => { return { nick: admin.nick, email: admin.email } }));
   } catch (error) {
     res.status(500).json(error);
   }
@@ -117,7 +180,12 @@ const getCurrentUser = async (req, res) => {
 const getBillPDF = async (req, res) => {
   const billId = req.params.billId;
   try {
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const user = await User.findById(decodedToken.userId);
     const bill = await Bill.findById(billId);
+
+    if (!user.admin && bill.usuario != user.id) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
     if (!bill) return res.status(404).json({ message: 'No se encuentra la factura' });
     const fileStream = fs.createReadStream(bill.pdf)
     fileStream.pipe(res);
@@ -132,7 +200,7 @@ const editUser = async (req, res) => {
     const { newUser, _id } = req.body;
     const user = await User.findById(_id);
     let userDb = await User.findByIdAndUpdate(_id, newUser);
-    userDb = await User.findByIdAndUpdate(_id, { password: user.password })
+    userDb = await User.findByIdAndUpdate(_id, { password: user.password, admin: false })
     userDb.password = null;
     res.status(200).json(userDb);
   } catch (error) {
@@ -143,6 +211,11 @@ const editUser = async (req, res) => {
 const changePermissions = async (req, res) => {
   try {
     const { email } = req.body;
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const userAdmin = await User.findById(decodedToken.userId);
+
+    if (!userAdmin || !userAdmin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
     let user = await User.findOne({ email: email })
     const toggleAdmin = !user.admin;
     user = await User.findByIdAndUpdate(user._id, { admin: toggleAdmin })
@@ -168,29 +241,29 @@ const editUserBilling = async (req, res) => {
     data.append("dni", newUser.nif);
     data.append("direccion", newUser.direccionFacturacion);
     data.append("codigoPostal", newUser.codigoPostalFacturacion);
-    data.append("tipoPersona", newUser.empresa? '1' : '2');
+    data.append("tipoPersona", !newUser.empresa ? '1' : '2');
     // data.append("poblacion", newUser.poblacionFacturacion);
     // data.append("provincia", newUser.provinciaFacturacion);
     user.idNeverlate === 0 && data.append("pais[nombre]", newUser.paisFacturacion);
 
     try {
       const res = await axios.post(url, data, { headers: { ...data.getHeaders() } });
+      console.log('data', res.data);
       errorCode = res.data.errorCode;
       newUser.idNeverlate = res.data.return.id;
-      console.log('data', res.data);
     } catch (error) {
       console.error('Error:', error);
-      res.status(error.errorCode).json(error);
+      res.status(error.errorCode).json({ code: error.errorCode, message: error.message });
     }
 
     let userDb = await User.findByIdAndUpdate(_id, newUser);
-    userDb = await User.findByIdAndUpdate(_id, { password: user.password })
+    userDb = await User.findByIdAndUpdate(_id, { password: user.password, admin: false })
     userDb.password = null;
     if (errorCode !== 200) return res.status(500).json(error);
     else return res.status(200).json(userDb);
   } catch (error) {
     console.log('error', error);
-    res.status(500).json(error);
+    res.status(500).json({ code: 500, error: error.message });
   }
 };
 
@@ -209,24 +282,75 @@ const verifyUser = async (req, res) => {
   }
 };
 
+const resendVerifyEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    let user = await User.findOne({ email: email })
+    const token = user.password.replace(/[/.]/g,'') 
+    const nick = user.nick;
+    sendVerifyEmail(email, nick, token);
+    return res.status(200).send({ code: 200, message: 'Correo enviado' })
+  } catch (error) {
+    return res.status(500).json({ code: 500, message: error });
+  }
+};
+
+const verifyAdmin = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const userAdmin = await User.findById(decodedToken.userId);
+
+    if (!userAdmin || !userAdmin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
+    let user = await User.findOne({ email: email })
+    if (!user) return res.status(404).json({ code: 404, message: 'Usuario no encontrado' });
+    if (user.verified) return res.status(304).json({ code: 304, message: 'Ya verificado' })
+    user = await User.updateOne({ _id: user._id }, { $set: { verified: true } })
+    return res.status(200).json({ code: 200, message: 'Verificado', nick: user.nick });
+  } catch (error) {
+  return res.status(500).json({ code: 500, message: error });
+}
+};
+
 const recoverPassword = async (req, res) => {
   try {
-    const { token, nick } = req.body;
-    let user = await User.findOne({ nick: nick })
-    const verifyPassword = user.password.replace(/[/.]/g,'')
-    if (verifyPassword === token && user.verified) {
-      return res.status(200).json('confirmed');
+    const { token } = req.body;
+    const decodedToken = Buffer.from(token, 'base64').toString('ascii');
+    let id = '';
+
+    jwt.verify(decodedToken, process.env.JWT_KEY, (err, decoded) => {
+      id = decoded.userId;
+      if (err) {
+        return res.status(401).json({ code: 401, message: 'El token no es válido' });
+      }
+    });
+    let user = await User.findById(id);
+
+    if (user.verified) {
+      return res.status(200).json({ code: 200, message: 'confirmed' });
     }
-    else return res.status(500).send('Error intentando recuperar la contraseña');
+
+    else return res.status(304).send({ code: 304, message: 'El usuario no está verificado' });
   } catch (error) {
-    return res.status(500).json(error);
+    return res.status(500).json({ code: 500, message: error.message });
   }
 };
 
 const changePassword = async (req, res, next) => {
   try {
-    const { nick, password } = req.body;
-    let user = await User.findOne({ nick: nick })
+    const { token, password } = req.body;
+    const decodedToken = Buffer.from(token, 'base64').toString('ascii');
+    let id = '';
+
+    jwt.verify(decodedToken, process.env.JWT_KEY, (err, decoded) => {
+      id = decoded.userId;
+      if (err) {
+        return res.status(401).json({ code: 401, message: 'El token no es válido' });
+      }
+    });
+
+    let user = await User.findById(id);
     const passVal = validationPassword(password);
     if (passVal !== 'Valid') {
       console.log({ code: 403, message: passVal })
@@ -244,18 +368,9 @@ const changePassword = async (req, res, next) => {
 
 const getUserById = async (req, res) => {
   try {
-    const {id} = req.body
-    const user = await User.findById(id).select('-password').populate('tickets').populate('chats').populate('facturas');
+    const { id } = req.body
+    const user = await User.findById(id).select('-password').populate('tickets').populate('facturas');
     res.status(200).json(user);
-  } catch (error) {
-    res.status(500).json(error);
-  }
-};
-
-const getAllUserEmails = async (req, res) => {
-  try {
-    const emails = (await User.find({}, { email: 1, _id: false })).map(function(u) { return u.email })
-    res.status(200).json(emails);
   } catch (error) {
     res.status(500).json(error);
   }
@@ -263,7 +378,14 @@ const getAllUserEmails = async (req, res) => {
 
 const sendEmail = async (req, res) => {
   try {
-    const { emails, subject, message } = req.body;
+    const { subject, message } = req.body;
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const userAdmin = await User.findById(decodedToken.userId);
+
+    if (!userAdmin || !userAdmin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
+
+    const emails = (await User.find({}, { email: 1, _id: false })).map(function(u) { return u.email })
     const mailOptions = {
       from: 'Todoskins <skinsdream@todoskins.com>',
       bcc: emails,
@@ -292,30 +414,33 @@ const sendRecoveryEmail = async (req, res) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email: email })
-    const nick = user.nick;
-    const token = user.password.replace(/[/.]/g,'')
+    if (!user) return res.status(404).send({ code: 404, message: 'No se encuentra el usuario' });
 
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_KEY, { expiresIn: '15m' });
+    const encodedToken = Buffer.from(token).toString('base64');
     const mailOptions = { 
       from: 'Todoskins <skinsdream@todoskins.com>',
       to: email,
       subject: 'Recupera tu cuenta',
-      text: `${nick}`,
-      html: `<div><h2>Hola! Recupera tu cuenta haciendo click aquí:</h2><a href='https://todoskins.com/recover/${nick}/${token}'>Recupera tu cuenta aquí</a></div>`,
+      text: `${user.nick}`,
+      html: `<div><h2>Hola! Recupera tu cuenta haciendo click aquí:</h2><a href='https://todoskins.com/recover/${encodedToken}'>Recupera tu cuenta aquí</a></div>`,
     }
-    
+
+    console.log('mailOptions', mailOptions);
     transporter.sendMail(mailOptions, (error, info) => {
       if (error){
         console.log(error);
-        res.status(500).send('Error enviando los correos. Comprueba los logs');
+        res.status(500).send({ code: 500, message: 'Error enviando los correos. Comprueba los logs' });
       } else {
         console.log('Message sent: ' + info.response);
         res.status(200);
      };
+     
      return res.end();
    });
   } catch (error) {
-      console.error('Error sending emails:', error);
-      res.status(500).send('Error enviando los correos. Comprueba los logs');
+    console.error('Error sending emails:', error);
+    res.status(500).send('Problema de servidor');
   }
 };
 
@@ -354,4 +479,4 @@ const logout = async (req, res) => {
   res.json({ message: 'Se ha cerrado sesión' });
 }
 
-module.exports = { register, login, getCurrentUser, editUser, getBillPDF, changePermissions, editUserBilling, verifyUser, recoverPassword, changePassword, getUserById, getAllUserEmails, sendEmail, sendRecoveryEmail, logout }
+module.exports = { register, login, getCurrentUser, getAllAdmins, editUser, getBillPDF, getStatistics, changePermissions, editUserBilling, verifyUser, resendVerifyEmail, verifyAdmin, recoverPassword, changePassword, getUserById, sendEmail, sendRecoveryEmail, logout }

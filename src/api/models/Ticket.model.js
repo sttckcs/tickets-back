@@ -5,7 +5,7 @@ const Schema = mongoose.Schema;
 const TicketSchema = new Schema({
   user: { type: Schema.Types.ObjectId, ref: "User" },
   category: { type: String, required: true },
-  description: { type: String, required: true },
+  marked: { type: Boolean, required: true, default: false },
   adminLast: { type: Boolean, required: true, default: true },
   notifyUser: { type: Boolean, required: true },
   notifyAdmin: { type: Boolean, required: true, default: false },

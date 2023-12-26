@@ -8,10 +8,11 @@ const { connectDB } = require('./src/utils/db');
 const userRouter = require('./src/api/routes/User.routes');
 const ticketRouter = require('./src/api/routes/Ticket.routes');
 const cron = require('./src/utils/cron.js');
+const cronMensajes = require('./src/utils/cronMensajes.js');
 require('dotenv').config();
 
 const io = new Server(server, {
-  cors: { origin: 'http://localhost:5173' }
+  cors: { origin: 'https://todoskins.com' }
 });
 const port = process.env.PORT || 3030;
 
@@ -19,14 +20,14 @@ app.use((req, res, next) => {
   res.header('Access-Control-Allow-Method', 'POST, GET, DELETE, PUT, PATCH');
   res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Origin, Accept');
-  res.header('Access-Control-Allow-Origin', 'http://localhost:5173');
+  res.header('Access-Control-Allow-Origin', 'https://todoskins.com');
   next();
 })
 
 app.use(express.json({limit: '5mb'}));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(cors({ credentials: true, origin: 'http://localhost:5173' }));
+app.use(cors({ credentials: true, origin: 'https://todoskins.com' }));
 
 connectDB();
 
@@ -64,3 +65,4 @@ server.listen(port, () => {
 });
 
 cron();
+cronMensajes();

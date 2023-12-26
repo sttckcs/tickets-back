@@ -4,10 +4,11 @@ const validationEmail = (email) => {
 }
 
 const validationPassword = (password) => {
-  const regex = /^(?=.{8,16}$)(?=[^A-Za-z]*[A-Za-z])(?=[^\d]*\d).*/;
+  const regex = /^(?=.{8,24}$)(?=[^A-Za-z]*[A-Za-z])(?=[^\d]*\d).*/;
   if (regex.test(String(password))) return 'Valid';
   else {
     if (password.length < 8) return 'La contraseña es demasiado corta (8 carácteres mínimo)'
+    else if (password.length > 24) return 'La contraseña es demasiado larga (24 carácteres máximo)'
     else if (!/[A-Za-z]/.test(String(password))) return 'La contraseña necesita una letra mínimo'
     else if (!/\d/.test(String(password))) return 'La contraseña necesita un numero mínimo'
   }
