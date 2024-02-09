@@ -89,54 +89,27 @@ const addTicket = async (req, res, next) => {
       const validCategories = ['buff', 'buy', 'sell'];
       let owner = await User.findById(user).populate('tickets');
       const ticketMessages = {
-        'buff' : `Buenas ${owner.nick}, soy Aregodas. En este apartado tendrás acceso a poder comprar o vender saldo en buff.163
-        Para COMPRAR saldo se puede hacer de dos formas.
-        1- Tendrás que listar un arma a la cantidad que te gustaria recibir, una vez lo hagas vas dentro de buff.163 a “sell” y 
-        arriba a la derecha te sale el icono de una tienda y te pone “my store”, entras ahí dentro y eso es lo que tu tienes a la 
-        venta, necesito que me pases ese link. Así yo veo que es lo que quieres vender, y te digo cuanto te cobro por venderte esa 
-        cantidad de balance, una vez realizada la transacción , a los 8 dias contactame y enviame tradeback de la skin que usamos 
-        para proceder a la transacción del saldo, ya que esa skin solo es un intermediario y te la voy a regresar.
-        2- Los cupones.
-        Puedo enviarte las cantidades de 1000 o 2000 yuanes (vienen predefinidas no son customizables) que te llegan integras con 
-        las comisiones ya incluidas.
-        Para este proceso, lo único que necesito es que me pases tu nombre de usuario, y con tu nombre te emitiré un cupón que 
-        puedes introducirlo dentro del apartado de ''benefit'' y se te agregaria el saldo al instante.
-        los cupones són limitados, así que solo se emitirán en cantidades concretas
-        En caso de que el cliente no tenga ningún artículo para listar y proceder a la transacción, puedo solicitar por soporte el 
-        abono manual de la cuantía, este proceso suele tardar 2 días desde la emisión de la solicitud, y buff.163 se reserva el 
-        derecho a rechazar la solicitud ( no ha ocurrido todavia, pero lo dejan abierto a que pueda suceder)
-        -En caso de que quieras VENDER saldo, tienes que indicarme la cantidad que quieres vender, y te informaré de cuanto te 
-        podría pagar por ese balance, el proceso és el mismo que en las compras, por lo que tengo que listar a vender una skin 
-        para que me la compres, y a los 8 días me la tienes que regresar.`,
-        'sell' : `¡Hola! Estoy aquí para ayudarte con tus skins de Counter-Strike de manera segura. Comparte los detalles de tu 
-        venta aquí mismo y te responderé pronto. Encuéntrame en Steam: https://steamcommunity.com/id/Aregodas. Recuerda: no tengo 
-        segundas cuentas ni asistentes; si alguien más contacta, avísanos para evitar estafas. Además, asegúrate de revisar el 
-        FAQ de la pagina. ¡Gracias!`,
-        'buy' : `Buenas ${owner.nick}, soy Aregodas, la persona que se encarga de hacer los trades, este ticket es un espacio 
-        seguro donde solo tenemos acceso nosotros dos y los Admins que entran a ayudar en cualquier tipo de duda que pueda haber 
-        hasta que atienda el ticket.
-        Así que a la hora de compartir cualquier dato para proceder a los pagos, puedes estar tranquilo que tu información no se 
-        verá comprometida. Atenderé tu petición lo antes posible.
-        Este es mi steam: https://steamcommunity.com/id/Aregodas
-        (No tengo segundas cuentas ni hay gente que me ayude con los trades, si alguien te contacta va a querer scamearte, si 
-        esto ocurre porfavor haznos llegar la información de esa persona a mi o a los moderadores para banearla y asi evitar 
-        scams)
-        
-        • En este ticket tendrás acceso a comprar skins.
-        Para comprar skins tienes que hacer lo siguiente:
-        
-        ➣ Indicar el nombre de la skin que quieres; Su estado y con o sin StatTrack. (en caso de querer una fase especifica como 
-        en los doppler, o un % de fade. Deberás indicarlo)
-        
-        Puedes pagarme la skin por transferencia bancaria. Acepto skins como forma de pago. Una vez me hayas hecho el pago de tu 
-        pedido (o enviado la skin que has usado como método de pago)
-        En caso de no tenerla en mi inventario, procederia a comprarla de buff.163, por lo que desde el momento en que la compro 
-        y me la envian, no podré enviartela hasta dentro de los siguientes 8 dias ya que tiene una restricción de steam (tradeban),
-        por lo que en este caso, el ticket se quedaria abierto en espera de que se cumplan esos 8 dias de restricción hasta que 
-        pueda enviarte la skin. Una vez el item esté libre y se pueda tradear, taggeame @Aregodas en el ticket y enviame la oferta 
-        de intercambio.`
+        'buff' : `Buenas ${owner.nick}, soy Aregodas. En este apartado tendrás acceso a poder comprar o vender saldo en buff.163. 
+        IMPORTANTE RECORDAR QUE EN LAS TRANSACCIONES DE SALDO, HASTA QUE NO LLEGAN LOS PAGOS NO SE PUEDE ENTREGAR EL BALANCE 
+        Venta mínima de al menos 100 euros.
+        Para COMPRAR saldo se puede hacer de dos formas. 
+        1- Tendrás que listar un arma a la cantidad que te gustaría recibir, una vez lo hagas vas dentro de buff.163 a “sell” y arriba a la derecha te sale el icono de una tienda y te pone “my store”, entras ahí dentro y eso es lo que tienes a la venta, necesito que me pases ese link, y te digo cuanto te cobro por venderte esa cantidad de balance, una vez realizada la transacción , a los 8 días contáctame y enviame tradeback de la skin que usamos para proceder a la transacción del saldo, ya que esa skin solo es un intermediario. 
+        2- Los cupones. Puedo enviarte las cantidades de 1000RMB (por 140 EUR) o 2000RMB ( por 280EUR) directamente a tu cuenta, recuerda que vienen predefinidas, no son customizables que te llegan íntegras con las comisiones ya incluidas.
+        Para este proceso, lo único que necesito es que me pases tu nombre de usuario en buff.163, el cupón puedes introducirlo dentro del apartado de ''benefit'' y se te agregaría el saldo al instante.
+        Los métodos de pago que aceptamos son TRANSFERENCIA BANCARIA Y CRYPTO.`,
+        'sell' : `¡Hola! Estoy aquí para ayudarte con tus skins de Counter-Strike de manera segura.
+        Comparte los detalles de tu venta aquí mismo y te responderé pronto, PARA REVISAR LOS PRECIOS Y ESTADOS DE LAS SKINS QUE VAYAS A QUERER VENDER, NECESITO QUE ME ENVIES EL LINK A TU PERFIL DE STEAM PARA PODER OFRECERTE UNA TASACIÓN, ¡recuerda que compraremos tus skins siempre que superen en su total los 100 EUR de valor! 
+        Podemos pagarte por: Transferencia bancaria instantánea , PayPal y crypto. Recordar que pueden haber comisiones en los envíos al extranjero.
+        Encuéntrame en Steam: https://steamcommunity.com/id/Aregodas. Recuerda: no tengo segundas cuentas ni asistentes; si alguien más contacta, avísanos para evitar estafas. Además, asegúrate de revisar el FAQ de la pagina. ¡Gracias!`,
+        'buy' : `¡Hola! Soy Aregodas, la persona que se encarga de hacer los trades,  este es mi Steam: https://steamcommunity.com/id/Aregodas 
+        Esto es un ticket de compra, y necesito que me indiques lo siguiente;
+        -El link a tu perfil de Steam para la entrega del pedido
+        -El nombre de la skin que quieres y su estado.
+        Los métodos de pago que aceptamos en las compras son TRANSFERENCIA BANCARIA Y CRYPTO, también aceptamos skins como forma de pago.
+        ¡¡¡ IMPORTANTE RECORDAR PEDIDO MINIMO DE 100 EUROS !!!`
       }
       if (!validCategories.includes(category)) return res.status(403).send({ code: 403, message: "La categoría del ticket es errónea" });
+      if (owner.banned) return res.status(403).send({ code: 403, message: "No estás autorizado" });
       const message = {
         name: 'Aregodas',
         msg: category === 'buff' ? ticketMessages.buff : category === 'buy' ? ticketMessages.buy : ticketMessages.sell,
@@ -314,7 +287,7 @@ const editTicketMessage = async (req, res) => {
 const ticketOwnerAndStatus = async (req, res) => {
   try {
       const { id } = req.body;
-      const ticket = await Ticket.findById(id).populate('user', 'nick')
+      const ticket = await Ticket.findById(id).populate('user', 'nick');
       return res.status(200).json(ticket)
   } catch (error) {
       return res.status(500).json(error);

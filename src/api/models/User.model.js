@@ -16,6 +16,7 @@ const UserSchema = new Schema({
   name: { type: String, required: false, default: "" },
   steam: { type: String, required: true },
   verified: { type: Boolean, required: true, default: false },
+  banned: { type: Boolean, required: true, default: false },
   phone: { type: String, required: false },
   picture: { type: String, required: true, default: 'https://happytravel.viajes/wp-content/uploads/2020/04/146-1468479_my-profile-icon-blank-profile-picture-circle-hd.png' },  
   admin: { type: Boolean, required: true, default: false },
