@@ -67,11 +67,13 @@ const register = async (req, res) => {
 
     // Save the user to the database
     const createUser = await newUser.save();
+    console.log('createUser', createUser);
     createUser.password = null;
     const token = hashedPassword.replace(/[/.]/g,'')
     sendVerifyEmail(email, nick, token);
     return res.status(201).json(createUser);
   } catch (error) {
+    console.log('error', error);
     return res.status(500).json(error);
   }
 }
@@ -165,6 +167,16 @@ const getStatistics = async (req, res) => {
     return res.status(200).json({ code: 200, user, ticket, bill })
   } catch (error) {
     console.log(error);
+const getAllAdmins = async (req, res) => {
+  try {
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const userAdmin = await User.findById(decodedToken.userId);
+
+    if (!userAdmin || !userAdmin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
+    const admins = await User.find({ admin: true }).populate();
+    res.status(200).json(admins.map(admin => { return { nick: admin.nick, email: admin.email } }));
+  } catch (error) {
     res.status(500).json(error);
   }
 };
@@ -179,6 +191,36 @@ const getAllAdmins = async (req, res) => {
     const admins = await User.find({ admin: true }).populate();
     res.status(200).json(admins.map(admin => { return { nick: admin.nick, email: admin.email } }));
   } catch (error) {
+    
+const getStatistics = async (req, res) => {
+  try {
+    const { interval, startDate, endDate, pais } = req.body;
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const userAdmin = await User.findById(decodedToken.userId);
+    const today = new Date();
+    let day = new Date();
+
+    if (!userAdmin || !userAdmin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
+
+    if (interval === 'day') {
+      day = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+    } else if (interval === 'week') {
+      day = new Date(today.getTime() - 24 * 60 * 60 * 1000 * 7);
+    } else if (interval === 'month') {
+      day = new Date(today.getTime() - 24 * 60 * 60 * 1000 * 30);
+    } else if (interval === 'year') {
+      day = new Date(today.getTime() - 24 * 60 * 60 * 1000 * 365);
+    }
+
+    const query = { createdAt: { $gte: day, $lte: today }};
+    const ticket = await Ticket.countDocuments(query);
+    const bill = await Bill.countDocuments(query);
+    if (pais) query.paisFacturacion = { $regex: new RegExp(pais, 'i') };
+    const user = await User.countDocuments(query);
+    return res.status(200).json({ code: 200, user, ticket, bill })
+  } catch (error) {
+    console.log(error);
     res.status(500).json(error);
   }
 };
@@ -322,12 +364,14 @@ const resendVerifyEmail = async (req, res) => {
   try {
     const { email } = req.body;
     let user = await User.findOne({ email: email })
+    if (!user) return res.status(404).json({ code: 404, message: 'Usuario no encontrado' });
+    if (user.verified) return res.status(304).json({ code: 304, message: 'Usuario ya verificado' });
     const token = user.password.replace(/[/.]/g,'') 
     const nick = user.nick;
     sendVerifyEmail(email, nick, token);
-    return res.status(200).send({ code: 200, message: 'Petición procesada' })
+    return res.status(200).send({ code: 200, message: 'Correo enviado' })
   } catch (error) {
-    return res.status(200).json({ code: 200, message: 'Petición procesada' });
+    return res.status(500).json({ code: 500, message: error });
   }
 };
 
@@ -384,8 +428,18 @@ const deleteUser = async (req, res) => {
     return res.status(500).json({ code: 500, message: error });
   }
 };
-
-
+    const { email, id } = req.body;
+    const admin = await User.findById(id);
+    if (!admin || !admin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
+    let user = await User.findOne({ email: email })
+    if (!user) return res.status(404).json({ code: 404, message: 'Usuario no encontrado' });
+    if (user.verified) return res.status(304).json({ code: 304, message: 'Ya verificado' })
+    user = await User.updateOne({ _id: user._id }, { $set: { verified: true } })
+    return res.status(200).json({ code: 200, message: 'Verificado', nick: user.nick });
+  } catch (error) {
+  return res.status(500).json({ code: 500, message: error });
+}
+};
 const recoverPassword = async (req, res) => {
   try {
     const { token } = req.body;
@@ -402,7 +456,8 @@ const recoverPassword = async (req, res) => {
     if (user.verified) {
       return res.status(200).json({ code: 200, message: 'confirmed' });
     }
-    else return res.status(200).send({ code: 200, message: 'confirmed' });
+
+    else return res.status(304).send({ code: 304, message: 'El usuario no está verificado' });
   } catch (error) {
     return res.status(500).json({ code: 500, message: error.message });
   }
@@ -472,10 +527,16 @@ const sendEmail = async (req, res) => {
     const { subject, message } = req.body;
   
   const token = req.cookies.token;
+=======
+const sendEmail = async (req, res) => {
+  try {
+    const { subject, message } = req.body;
+    const token = req.cookies.token;
     const decodedToken = jwt.verify(token, process.env.JWT_KEY);
     const userAdmin = await User.findById(decodedToken.userId);
 
     if (!userAdmin || !userAdmin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
+    
     const emails = (await User.find({}, { email: 1, _id: false })).map(function(u) { return u.email })
     const mailOptions = {
       from: 'Todoskins <skinsdream@todoskins.com>',
@@ -505,7 +566,7 @@ const sendRecoveryEmail = async (req, res) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email: email })
-    if (!user) return res.status(200).send({ code: 200, message: 'Petición procesada' });
+    if (!user) return res.status(404).send({ code: 404, message: 'No se encuentra el usuario' });
 
     const token = jwt.sign({ userId: user._id }, process.env.JWT_KEY, { expiresIn: '15m' });
     const encodedToken = Buffer.from(token).toString('base64');
@@ -521,7 +582,7 @@ const sendRecoveryEmail = async (req, res) => {
     transporter.sendMail(mailOptions, (error, info) => {
       if (error){
         console.log(error);
-        res.status(200).send({ code: 200, message: 'Petición procesada' });
+        res.status(500).send({ code: 500, message: 'Error enviando los correos. Comprueba los logs' });
       } else {
         console.log('Message sent: ' + info.response);
         res.status(200).send({ code: 200, message: 'Peticion procesada' });
@@ -531,7 +592,7 @@ const sendRecoveryEmail = async (req, res) => {
    });
   } catch (error) {
     console.error('Error sending emails:', error);
-    res.status(200).send({ code: 200, message: 'Peticion procesada' });
+    res.status(500).send('Problema de servidor');
   }
 };
 
