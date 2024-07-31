@@ -7,7 +7,7 @@ const FormData = require('form-data');
 const User = require('../api/models/User.model');
 const Bill = require('../api/models/Bill.model');
 
-const CronFunction = async () => {
+const CronFunction = () => {
   cron.schedule('0 23 * * *', async () => {
     try {
       console.log('ejecutando cron');
@@ -32,6 +32,9 @@ const CronFunction = async () => {
         camposFactura.forEach(campo => {
           if (campo === 'documentos' && factura[campo] !== undefined && factura[campo].length > 0) {
             facturaLimpia[campo] = process.env.BASE_SERVER_URL + factura[campo][0].url;
+            if (factura[campo][0].url == undefined) {
+              facturaLimpia[campo] = factura["documentoPdf"].url;
+            }
           } else if (campo === 'usuario' && factura[campo] !== undefined) {
             facturaLimpia[campo] = factura[campo].id;
           } else if (factura[campo] !== undefined) {
@@ -40,45 +43,54 @@ const CronFunction = async () => {
         });
         return facturaLimpia;
       });
-      
-      const asignarFacturas = async (facturas) => {
-      for (const factura of facturas) {
-        const { usuario, documentos, numeroString, fecha, totalImporte } = factura;
-        try {
-          let user = await User.findOne({ idNeverlate: usuario });
-          if (user) {
-            const writeFileAsync = promisify(fs.writeFile);
-            const url = documentos || '';
-            const rutaLocal = path.join(__dirname, 'facturas', String(user.idNeverlate));
-            const rutaLocalPdf = `${rutaLocal}/${numeroString}.pdf`;
-            if (!fs.existsSync(rutaLocal)) {
-              fs.mkdirSync(rutaLocal, { recursive: true });
-            }
-            const res = await axios.get(url, { responseType: 'arraybuffer' });
-            
-            await writeFileAsync(rutaLocalPdf, Buffer.from(res.data));
 
-            const nuevaFactura = new Bill({
-              usuario: user._id,
-              numero: numeroString,
-              fecha: fecha,
-              totalImporte: totalImporte,
-              pdf: rutaLocalPdf,
-            });
-            user = await User.updateOne({ _id: user.id }, { $push: {facturas: nuevaFactura._id } });
-            await nuevaFactura.save();
-          } else {
-            console.log('no se ha encontado el usuario de la factura');
-            return;
+      const asignarFacturas = async (facturas) => {
+        for (const factura of facturas) {
+          const { usuario, documentos, numeroString, fecha, totalImporte } = factura;
+
+          const facturaExistente = await Bill.findOne({ numero: numeroString });
+          if (facturaExistente)
+            continue;
+          
+          try {
+            let user = await User.findOne({ idNeverlate: usuario });
+            if (user) {
+              const writeFileAsync = promisify(fs.writeFile);
+              const url = documentos || '';
+              const rutaLocal = path.join(__dirname, 'facturas', String(user.idNeverlate));
+              const rutaLocalPdf = `${rutaLocal}/${numeroString}.pdf`;
+              if (!fs.existsSync(rutaLocal)) {
+                fs.mkdirSync(rutaLocal, { recursive: true });
+              }
+
+              if (!url || url == '' || url == undefined)
+                continue;
+
+              const res = await axios.get(url, { responseType: 'arraybuffer' });
+              
+              await writeFileAsync(rutaLocalPdf, Buffer.from(res.data));
+
+              const nuevaFactura = new Bill({
+                usuario: user._id,
+                numero: numeroString,
+                fecha: fecha,
+                totalImporte: totalImporte,
+                pdf: rutaLocalPdf,
+              });
+              user = await User.updateOne({ _id: user.id }, { $push: {facturas: nuevaFactura._id } });
+              await nuevaFactura.save();
+            } else {
+              console.log('no se ha encontado el usuario de la factura');
+              continue;
+            }
+          } catch (error) {
+            console.log('error asignando factura', error);
+            continue;
           }
-        } catch (error) {
-          console.log('error asignando facturas', error);
-          return;
         }
       }
-    }
 
-    asignarFacturas(facturas);
+      asignarFacturas(facturas);
 
     } catch (error) {
       console.log('error en el cron', error);

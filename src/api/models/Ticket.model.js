@@ -11,6 +11,7 @@ const TicketSchema = new Schema({
   notifyAdmin: { type: Boolean, required: true, default: false },
   messages: [{name: { type: String, required: false }, msg: { type: String, required: false }, time: { type: String, required: false }}],
   open: {type: Boolean, required: true, default: true},
+  weaponAsset: { type: Number, required: false },
 },{
   timestamps: true
 });

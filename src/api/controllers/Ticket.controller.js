@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 const he = require('he');
+const Weapon = require('../models/Weapon.model');
 
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_NAME,
@@ -85,9 +86,12 @@ const getUserTickets = async (req, res) => {
 
 const addTicket = async (req, res, next) => {
   try {
-      const { user, category, notify } = req.body;
+      const { assetId, category, notify } = req.body;
       const validCategories = ['buff', 'buy', 'sell'];
-      let owner = await User.findById(user).populate('tickets');
+      const token = req.cookies.token;
+      const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+
+      let owner = await User.findById(decodedToken.userId).populate('tickets');
       const ticketMessages = {
         'buff' : `Buenas ${owner.nick}, soy Aregodas. En este apartado tendrás acceso a poder comprar o vender saldo en buff.163. 
         IMPORTANTE RECORDAR QUE EN LAS TRANSACCIONES DE SALDO, HASTA QUE NO LLEGAN LOS PAGOS NO SE PUEDE ENTREGAR EL BALANCE 
@@ -115,7 +119,21 @@ const addTicket = async (req, res, next) => {
         msg: category === 'buff' ? ticketMessages.buff : category === 'buy' ? ticketMessages.buy : ticketMessages.sell,
         time: new Date()
       }
-      const newTicket = new Ticket({ user: user, category: category, notifyUser: notify, messages: message });
+
+      let ticketData = {
+        user: decodedToken.userId,
+        category: category,
+        notifyUser: notify,
+        messages: message
+      };
+
+      if (assetId) {
+        const weapon = Weapon.findOne({ assetId: assetId })
+        if (weapon)
+          ticketData.weaponAsset = assetId;
+      }
+
+      const newTicket = new Ticket(ticketData);
       const sameTicket = owner.tickets.filter(
         ticket => {
           if (ticket.category === category && ticket.open) return true
@@ -159,6 +177,7 @@ const closeTicket = async (req, res) => {
 
       if (!userAdmin || !userAdmin.admin) return res.status(403).json({ code: 403, message: 'No estás autorizado' });
       let ticket = await Ticket.findById(_id);
+      
       if (open) {
         ticket = await Ticket.findByIdAndUpdate(_id, {open: false});
       }

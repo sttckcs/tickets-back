@@ -1,7 +1,6 @@
 const express = require('express');
 const app = express();
-const server = require('http').createServer(app)
-const { Server } = require('socket.io')
+
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const fs = require('fs');
@@ -10,14 +9,20 @@ const morgan = require('morgan');
 const { connectDB } = require('./src/utils/db');
 const userRouter = require('./src/api/routes/User.routes');
 const ticketRouter = require('./src/api/routes/Ticket.routes');
+const weaponRouter = require('./src/api/routes/Weapon.routes');
 const cron = require('./src/utils/cron.js');
 const cronMensajes = require('./src/utils/cronMensajes.js');
+const cronWeapon = require('./src/utils/cronWeapons.js');
 const limiter = require('./src/middlewares/rateLimit.js');
 require('dotenv').config();
+
+const server = require('http').createServer(app)
+const { Server } = require('socket.io')
 
 const io = new Server(server, {
   cors: { origin: ['https://todoskins.com', 'http://localhost:5173'] }
 });
+
 const port = process.env.PORT || 3030;
 
 app.set('trust proxy', true);
@@ -58,6 +63,7 @@ connectDB();
 
 app.use('/user', userRouter);
 app.use('/ticket', ticketRouter);
+app.use('/inventory', weaponRouter);
 
 io.on('connection', socket => {
   socket.on('userJoin', ({ username, id }) => {
@@ -91,3 +97,4 @@ server.listen(port, () => {
 
 cron();
 cronMensajes();
+cronWeapon();
