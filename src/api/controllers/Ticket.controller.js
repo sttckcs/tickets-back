@@ -6,6 +6,8 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const jwt = require('jsonwebtoken');
+const he = require('he');
+const Weapon = require('../models/Weapon.model');
 
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_NAME,
@@ -29,7 +31,6 @@ const getAllTickets = async (req, res) => {
       const token = req.cookies.token;
       const decodedToken = jwt.verify(token, process.env.JWT_KEY);
       const userAdmin = await User.findById(decodedToken.userId);
-      
       if (!userAdmin || !userAdmin.admin ) return res.status(401).json({ code: 401, message: 'No estás autorizado' });
       const allTickets = (await Ticket.find().populate('user', '-password')).reverse();
       return res.status(200).json(allTickets);
@@ -85,6 +86,34 @@ const getUserTickets = async (req, res) => {
 
 const addTicket = async (req, res, next) => {
   try {
+      const { assetId, category, notify } = req.body;
+      const validCategories = ['buff', 'buy', 'sell'];
+      const token = req.cookies.token;
+      const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+
+      let owner = await User.findById(decodedToken.userId).populate('tickets');
+      const ticketMessages = {
+        'buff' : `Buenas ${owner.nick}, soy Aregodas. En este apartado tendrás acceso a poder comprar o vender saldo en buff.163. 
+        IMPORTANTE RECORDAR QUE EN LAS TRANSACCIONES DE SALDO, HASTA QUE NO LLEGAN LOS PAGOS NO SE PUEDE ENTREGAR EL BALANCE 
+        Venta mínima de al menos 100 euros.
+        Para COMPRAR saldo se puede hacer de dos formas. 
+        1- Tendrás que listar un arma a la cantidad que te gustaría recibir, una vez lo hagas vas dentro de buff.163 a “sell” y arriba a la derecha te sale el icono de una tienda y te pone “my store”, entras ahí dentro y eso es lo que tienes a la venta, necesito que me pases ese link, y te digo cuanto te cobro por venderte esa cantidad de balance, una vez realizada la transacción , a los 8 días contáctame y enviame tradeback de la skin que usamos para proceder a la transacción del saldo, ya que esa skin solo es un intermediario. 
+        2- Los cupones. Puedo enviarte las cantidades de 1000RMB (por 140 EUR) o 2000RMB ( por 280EUR) directamente a tu cuenta, recuerda que vienen predefinidas, no son customizables que te llegan íntegras con las comisiones ya incluidas.
+        Para este proceso, lo único que necesito es que me pases tu nombre de usuario en buff.163, el cupón puedes introducirlo dentro del apartado de ''benefit'' y se te agregaría el saldo al instante.
+        Los métodos de pago que aceptamos son TRANSFERENCIA BANCARIA Y CRYPTO.`,
+        'sell' : `¡Hola! Estoy aquí para ayudarte con tus skins de Counter-Strike de manera segura.
+        Comparte los detalles de tu venta aquí mismo y te responderé pronto, PARA REVISAR LOS PRECIOS Y ESTADOS DE LAS SKINS QUE VAYAS A QUERER VENDER, NECESITO QUE ME ENVIES EL LINK A TU PERFIL DE STEAM PARA PODER OFRECERTE UNA TASACIÓN, ¡recuerda que compraremos tus skins siempre que superen en su total los 100 EUR de valor! 
+        Podemos pagarte por: Transferencia bancaria instantánea , PayPal y crypto. Recordar que pueden haber comisiones en los envíos al extranjero.
+        Encuéntrame en Steam: https://steamcommunity.com/id/Aregodas. Recuerda: no tengo segundas cuentas ni asistentes; si alguien más contacta, avísanos para evitar estafas. Además, asegúrate de revisar el FAQ de la pagina. ¡Gracias!`,
+        'buy' : `¡Hola! Soy Aregodas, la persona que se encarga de hacer los trades,  este es mi Steam: https://steamcommunity.com/id/Aregodas 
+        Esto es un ticket de compra, y necesito que me indiques lo siguiente;
+        -El link a tu perfil de Steam para la entrega del pedido
+        -El nombre de la skin que quieres y su estado.
+        Los métodos de pago que aceptamos en las compras son TRANSFERENCIA BANCARIA Y CRYPTO, también aceptamos skins como forma de pago.
+        ¡¡¡ IMPORTANTE RECORDAR PEDIDO MINIMO DE 100 EUROS !!!`
+      }
+      if (!validCategories.includes(category)) return res.status(403).send({ code: 403, message: "La categoría del ticket es errónea" });
+      if (owner.banned) return res.status(403).send({ code: 403, message: "No estás autorizado" });
       const { user, category, notify } = req.body;
       const validCategories = ['buff', 'buy', 'sell'];
       let owner = await User.findById(user).populate('tickets');
@@ -127,7 +156,20 @@ const addTicket = async (req, res, next) => {
         msg: category === 'buff' ? ticketMessages.buff : category === 'buy' ? ticketMessages.buy : ticketMessages.sell,
         time: new Date()
       }
-      const newTicket = new Ticket({ user: user, category: category, notifyUser: notify, messages: message });
+      let ticketData = {
+        user: decodedToken.userId,
+        category: category,
+        notifyUser: notify,
+        messages: message
+      };
+
+      if (assetId) {
+        const weapon = Weapon.findOne({ assetId: assetId })
+        if (weapon)
+          ticketData.weaponAsset = assetId;
+      }
+
+      const newTicket = new Ticket(ticketData);
       const sameTicket = owner.tickets.filter(
         ticket => {
           if (ticket.category === category && ticket.open) return true
@@ -139,11 +181,26 @@ const addTicket = async (req, res, next) => {
         return next();
       }
       owner = await User.updateOne({ _id: owner.id }, { $push: { tickets: newTicket._id } });
-      await User.updateMany({ admin: { $eq: true }, chats: { $ne: newTicket._id } }, { $push: { chats: newTicket._id }})
       const createdTicket = await newTicket.save();
       return res.status(200).json(createdTicket);
   } catch (error) {
       return res.status(500).json(error)
+  }
+}
+
+const getTicketById = async (req, res) => {
+  try {
+      const { id } = req.body;
+      const token = req.cookies.token;
+      const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+      const userAdmin = await User.findById(decodedToken.userId);
+
+      if (!userAdmin || !userAdmin.admin) return res.status(403).json({ code: 403, message: 'No estás autorizado' });
+
+      const ticket = await Ticket.findById(id).populate('user', '-password');
+      return res.status(200).json(ticket);
+  } catch (error) {
+      return res.status(500).json(error);
   }
 }
 
@@ -156,6 +213,7 @@ const closeTicket = async (req, res) => {
 
       if (!userAdmin || !userAdmin.admin) return res.status(403).json({ code: 403, message: 'No estás autorizado' });
       let ticket = await Ticket.findById(_id);
+      
       if (open) {
         ticket = await Ticket.findByIdAndUpdate(_id, {open: false});
       }
@@ -168,11 +226,36 @@ const closeTicket = async (req, res) => {
   }
 }
 
+const markTicket = async (req, res) => {
+  try {
+      const { _id } = req.body;
+      const token = req.cookies.token;
+      const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+      const userAdmin = await User.findById(decodedToken.userId);
+
+      if (!userAdmin || !userAdmin.admin) return res.status(403).json({ code: 403, message: 'No estás autorizado' });
+      let ticket = await Ticket.findById(_id);
+      if (ticket.marked) {
+        ticket = await Ticket.findByIdAndUpdate(_id, { marked: false });
+      }
+      else {
+        ticket = await Ticket.findByIdAndUpdate(_id, { marked: true });
+      }
+      return res.status(200).json(ticket);
+  } catch (error) {
+      return res.status(500).json(error);
+  }
+}
+
 const toggleNotis = async (req, res) => {
   try {
-      const { id, admin, notify } = req.body;
+      const { notify, id } = req.body;
+      const token = req.cookies.token;
+      const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+      const user = await User.findById(decodedToken.userId);
+
       let ticket = await Ticket.findById(id)
-      if (admin) ticket = await Ticket.updateOne({ _id: ticket._id }, { $set: { notifyAdmin: notify } })
+      if (user.admin) ticket = await Ticket.updateOne({ _id: ticket._id }, { $set: { notifyAdmin: notify } })
       else ticket = await Ticket.updateOne({ _id: ticket._id }, { $set: { notifyUser: notify } })
       return res.status(200).json('Notificaciones actualizadas')
   } catch (error) {
@@ -186,7 +269,7 @@ const addTicketMessage = async (req, res) => {
     const { name, msg, room } = newMessage;
     const message = {
       name: name,
-      msg: msg,
+      msg: he.escape(msg),
       time: new Date()
     }
     const user = await User.findOne({ nick: name });
@@ -218,10 +301,49 @@ const getTicketMessages = async (req, res) => {
   }
 }
 
+const deleteTicketMessage = async (req, res) => {
+  try {
+    const { message, _id } = req.body;
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const userAdmin = await User.findById(decodedToken.userId);
+
+    if (!userAdmin || !userAdmin.admin) return res.status(403).json({ code: 403, message: 'No estás autorizado' });
+    const ticket = await Ticket.findById(_id);
+    const clearedMessages = ticket.messages.filter(msg => msg.time !== message[0].time);
+    console.log('cleared', clearedMessages);
+    const updatedTicket = await Ticket.updateOne({ _id: ticket._id }, { messages: clearedMessages });
+    return res.status(200).json(updatedTicket);
+    } catch (error) {
+        return res.status(500).json({ code: 500, error: error });
+    }
+}
+
+const editTicketMessage = async (req, res) => {
+  try {
+    const { message, _id, edit } = req.body;
+    const token = req.cookies.token;
+    const decodedToken = jwt.verify(token, process.env.JWT_KEY);
+    const userAdmin = await User.findById(decodedToken.userId);
+
+    if (!userAdmin || !userAdmin.admin) return res.status(403).json({ code: 403, message: 'No estás autorizado' });
+    const ticket = await Ticket.findById(_id);
+    const editedMessages = ticket.messages.map(msg => {
+      if (msg.time === message[0].time) msg.msg = edit;
+      return msg;
+    });
+    const updatedTicket = await Ticket.updateOne({ _id: ticket._id }, { messages: editedMessages });
+    return res.status(200).json(updatedTicket);
+    } catch (error) {
+      return res.status(500).json({ code: 500, error: error });
+    }
+}
+
+
 const ticketOwnerAndStatus = async (req, res) => {
   try {
       const { id } = req.body;
-      const ticket = await Ticket.findById(id).populate('user', 'nick')
+      const ticket = await Ticket.findById(id).populate('user', 'nick');
       return res.status(200).json(ticket)
   } catch (error) {
       return res.status(500).json(error);
@@ -287,4 +409,4 @@ const sendMessageEmail = async (byAdmin, message, ticketid, owneremail) => {
   }
 };
 
-module.exports = { getAllTickets, getUserTickets, addTicket, uploadImage, upload, toggleNotis, closeTicket, addTicketMessage, getTicketMessages, ticketOwnerAndStatus, deleteTicket }
+module.exports = { getAllTickets, getUserTickets, markTicket, addTicket, getTicketById, uploadImage, upload, toggleNotis, deleteTicketMessage, closeTicket, addTicketMessage, getTicketMessages, ticketOwnerAndStatus, deleteTicket, editTicketMessage }
